@@ -1,0 +1,117 @@
+{% extends "main.html" %}
+{% block content %}
+
+<p>Hello World</p>
+
+<h2 id="welcome"></h2>
+
+<div id='set-name'>
+  <input id="nickname" type="text" />
+  <button id="addname" onclick="addName()">Send Name</button>
+</div>
+
+<div id='set-room' style='display:none;'>
+  <input id="roomname" type="text" />
+  <button id="createroom" onclick="createRoom()">Create Room</button>
+</div>
+
+<div id='room-list' style='display:none;'>
+
+</div>
+
+
+<script type="text/javascript">
+  console.log('here');
+
+  // const chatSocket = new WebSocket(
+  //     `ws://${window.location.host}/ws/risla/`
+  // );
+
+  const chatSocket = new WebSocket(
+      `ws://${window.location.host}/ws/risla/`
+  );
+
+  function createRoom() {
+    const roomName = document.getElementById('roomname').value;
+    console.log(roomName);
+    chatSocket.send(JSON.stringify({
+        'newroom': roomName
+    }));
+  }
+
+  function addName() {
+    const name = document.getElementById('nickname').value;
+    console.log(name);
+    chatSocket.send(JSON.stringify({
+        'setname': name
+    }));
+  }
+
+  function joinRoom(room) {
+    chatSocket.send(JSON.stringify({
+        'joinroom': room
+    }));
+  }
+
+  function printRoomList(rooms) {
+    let roomUL = document.createElement("UL");
+    for (let room of rooms) {
+      console.log('here is the room',room);
+      let roomHTML = `
+        <li>
+          <p class="title">
+            ${room}
+            <button onclick="joinRoom('${room}')">Join</button>
+          </p>
+        </li>
+      `
+      roomUL.innerHTML += roomHTML;
+    }
+    return roomUL;
+  }
+
+  chatSocket.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      let roomList = document.getElementById('room-list');
+      console.log('here is the data',data.action);
+      switch (data.action) {
+        case 'name_set':
+          console.log('set name');
+          if (data.payload.success) {
+            let setName = document.getElementById('set-name');
+            let setRoom = document.getElementById('set-room');
+            setName.setAttribute('style', 'display:none;');
+            setRoom.setAttribute('style', 'display:block;');
+            roomList.setAttribute('style', 'display:block;');
+            document.getElementById('welcome').innerHTML = `Welcome ${data.payload.name}`;
+          }
+          break;
+        case 'room_list':
+          console.log('room list', data.payload);
+          if (data.payload.success) {
+            roomListHTML = printRoomList(data.payload.rooms);
+            roomList.appendChild(roomListHTML);
+          }
+          break;
+        case 'room_join':
+          console.log('join here',data.payload);
+          if(data.payload.success) {
+            window.location.pathname = `/risla/${data.payload.room}/`;
+          }
+          break;
+        default:
+          console.log('hit default');
+      }
+  };
+
+  // chatSocket.generate = (e) => {
+  //     const data = JSON.parse(e.data);
+  //     //console.log(e);
+  //     console.log(data);
+  // };
+
+
+
+</script>
+
+{% endblock %}

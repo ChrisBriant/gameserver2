@@ -1,0 +1,17 @@
+{% extends "main.html" %}
+{% block content %}
+
+<p>Hello Room</p>
+
+{{ room_name|json_script:"room-name" }}
+
+<script type="text/javascript">
+  console.log('here');
+  const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+  const chatSocket = new WebSocket(
+      `ws://${window.location.host}/ws/risla/${roomName}/`
+  );
+</script>
+
+{% endblock %}

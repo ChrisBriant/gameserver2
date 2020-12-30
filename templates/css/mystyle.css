@@ -1,0 +1,198 @@
+/*----------------------------------------------*/
+/*BASIC SETUP*/
+/*----------------------------------------------*/
+
+* {
+  margin: 0;
+  padding: 0;
+  -webkit-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background-color: #fff;
+  color:#262626;
+  font-family: 'Roboto Condensed', sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+}
+
+header {
+  min-height: 100vh;
+  padding: 2%;
+}
+
+section {
+  margin-left: 10%;
+  margin-right: 10%;
+  margin-top: 40px;
+}
+
+footer {
+  height: 10vh;
+  background-color: #D5B895;
+  text-align: center;
+  padding-top: 20px;
+}
+
+/*
+a {
+  cursor: pointer;
+}*/
+
+
+.clearfix {zoom:1}
+.clearfix::after {
+  content: '.';
+  clear: both;
+  display: block;
+  height: 0;
+  visibility: hidden;
+}
+
+.navbar {
+  background-color: #210e06;
+}
+
+.floating-dialog {
+  margin-top: 20%;
+}
+
+.edit-item {
+  cursor:pointer;
+}
+
+.submit-item {
+  cursor:pointer;
+  display:none;
+}
+
+.cancel-item {
+  cursor:pointer;
+  display:none;
+}
+
+
+/***********HEADERS****************/
+
+h1, h2, h3 {
+  font-weight: 400;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/***********FORMS****************/
+.expression-box {
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.home-form {
+  height:10%;
+  width: 100%;
+}
+
+.message-text {
+    color: #696915;
+}
+
+/***********CONTAINERS****************/
+
+.center-contents {
+  text-align: center;
+}
+
+.center-contents > a {
+  color: #40739e;
+}
+
+.header-container {
+  background-color: #D5B895;
+  padding: 2%;
+  color: #474747;
+  border-radius: 15px;
+}
+
+.expression-item {
+  background-color: #e8e0cf;
+  margin:20px;
+  padding:10px;
+  border-radius: 15px;
+}
+
+.space-at-top {
+  height: 50px;
+}
+
+/***********PAGINATION****************/
+.pagination {
+  text-align: center;
+}
+
+
+.step-links > a {
+  padding:20px;
+  color: #40739e;
+}
+
+
+/***********SEARCH****************/
+
+#search-form > div > * {
+  margin-right: 10px;
+  margin-left: 10px;
+}
+
+/************HEADER*************/
+#excel-icon {
+  width:5%;
+}
+
+#excel-icon-big {
+  width:25%;
+}
+
+/***********MAPS********************/
+/*
+
+.map {
+  width: 100%;
+  height: 70vh;
+}
+
+.ol-popup {
+  background-color: rgba(255, 234, 167,.8);
+  padding: 10px;
+  border-radius: 15px;
+}
+
+#popup-content img {
+  max-width: 100px;
+}
+*/
+/**********ROUTES*******************/
+
+/*
+.route-table {
+  background-color: #f5ba90;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.t-head {
+  font-weight: bold;
+}
+*/
+
+/********FOOTER*******************/
+/*
+.main-footer {
+  background-image: url('../img/rollinghills-800px.png');
+  height: 132px;
+  padding: 0px;
+  margin: 0px;
+}
+*/
