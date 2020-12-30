@@ -1,7 +1,7 @@
 {% extends "main.html" %}
 {% block content %}
 
-<p>Hello World</p>
+<p>Game Server</p>
 
 <h2 id="welcome"></h2>
 
@@ -10,14 +10,23 @@
   <button id="addname" onclick="addName()">Send Name</button>
 </div>
 
-<div id='set-room' style='display:none;'>
-  <input id="roomname" type="text" />
-  <button id="createroom" onclick="createRoom()">Create Room</button>
+<div id="room-setup">
+  <div id='set-room' style='display:none;'>
+    <input id="roomname" type="text" />
+    <button id="createroom" onclick="createRoom()">Create Room</button>
+  </div>
 </div>
 
-<div id='room-list' style='display:none;'>
+<div id='room-list' style='display:none;'></div>
 
+<div id="room" style="display:none;">
+  <h2 id="room-name""></h2>
+
+  <div id="members"></div>
+  <button id="createroom" onclick="leaveRoom()">Leave</button>
 </div>
+
+
 
 
 <script type="text/javascript">
@@ -26,6 +35,8 @@
   // const chatSocket = new WebSocket(
   //     `ws://${window.location.host}/ws/risla/`
   // );
+
+  let currentRoom = '';
 
   const chatSocket = new WebSocket(
       `ws://${window.location.host}/ws/risla/`
@@ -36,6 +47,13 @@
     console.log(roomName);
     chatSocket.send(JSON.stringify({
         'newroom': roomName
+    }));
+  }
+
+  function leaveRoom() {
+    console.log('leaving ',currentRoom);
+    chatSocket.send(JSON.stringify({
+        'leaveroom': currentRoom
     }));
   }
 
@@ -53,7 +71,8 @@
     }));
   }
 
-  function printRoomList(rooms) {
+  function printRoomList(rooms, roomList) {
+    roomList.innerHTML = '';
     let roomUL = document.createElement("UL");
     for (let room of rooms) {
       console.log('here is the room',room);
@@ -67,12 +86,14 @@
       `
       roomUL.innerHTML += roomHTML;
     }
-    return roomUL;
+    roomList.appendChild(roomUL);
   }
 
   chatSocket.onmessage = (e) => {
-      const data = JSON.parse(e.data);
       let roomList = document.getElementById('room-list');
+      const data = JSON.parse(e.data);
+      console.log('received');
+
       console.log('here is the data',data.action);
       switch (data.action) {
         case 'name_set':
@@ -89,14 +110,29 @@
         case 'room_list':
           console.log('room list', data.payload);
           if (data.payload.success) {
-            roomListHTML = printRoomList(data.payload.rooms);
-            roomList.appendChild(roomListHTML);
+            printRoomList(data.payload.rooms, roomList);
           }
           break;
         case 'room_join':
           console.log('join here',data.payload);
           if(data.payload.success) {
-            window.location.pathname = `/risla/${data.payload.room}/`;
+            document.getElementById('room-name').innerHTML = data.payload.room;
+            document.getElementById('room-setup').setAttribute('style', 'display:none;');
+            document.getElementById('room-list').setAttribute('style', 'display:none;');
+            document.getElementById('room').setAttribute('style', 'display:block;');
+            console.log(data.payload.players);
+            currentRoom = data.payload.room;
+            //window.location.pathname = `/risla/${data.payload.room}/`;
+          }
+          break;
+        case 'room_leave':
+          console.log('leave room',data.payload);
+          if(data.payload.success) {
+            currentRoom = '';
+            document.getElementById('room-setup').setAttribute('style', 'display:block;');
+            document.getElementById('room-list').setAttribute('style', 'display:block;');
+            document.getElementById('room').setAttribute('style', 'display:none;');
+            //window.location.pathname = `/risla/${data.payload.room}/`;
           }
           break;
         default:

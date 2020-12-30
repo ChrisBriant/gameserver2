@@ -7,6 +7,22 @@ import secrets
 players = PlayerList()
 rooms = RoomList()
 
+#Send the room list will need to be called continually
+async def send_room_data(channel_layer):
+    await channel_layer.group_send(
+        'all_users',
+        {
+            'type': 'room_data',
+            'data': {
+                'action' : 'room_list',
+                'payload' : {
+                        'success': True,
+                        'rooms': [r.name for r in rooms.rooms]
+                }
+            }
+        }
+    )
+
 class PlayerConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
@@ -54,6 +70,9 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         #     self.channel_name
         # )
 
+
+
+
     # Receive message from WebSocket
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -65,24 +84,19 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             try:
                 room = Room(text_data_json['newroom'],owner,rooms)
                 rooms.add_room(room)
-                # self.room_group_name = text_data_json['newroom']
-                # await self.channel_layer.group_add(
-                #     self.room_group_name,
-                #     self.channel_name
-                # )
+                #self.room_group_name = text_data_json['newroom']
+                await self.channel_layer.group_add(
+                    text_data_json['newroom'],
+                    self.channel_name
+                )
                 await self.channel_layer.group_send(
                     'all_users',
                     {
-                        'type': 'room_data',
-                        'data': {
-                            'action' : 'room_list',
-                            'payload' : {
-                                    'success': True,
-                                    'rooms': [r.name for r in rooms.rooms]
-                            }
-                        }
+                        'type': 'room_list',
                     }
                 )
+                #Doesn't work
+                #send_room_data(self.channel_layer)
             except Exception as e:
                 print(e)
                 await self.channel_layer.group_send(
@@ -110,6 +124,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
             }
             await self.send(text_data=json.dumps(data))
+            await self.room_list(None)
         if 'joinroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['joinroom'])
@@ -119,7 +134,8 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     'action' : 'room_join',
                     'payload' : {
                         'success': True,
-                        'room' : text_data_json['joinroom']
+                        'room' : text_data_json['joinroom'],
+                        'players' : room.get_players()
                     }
                 }
             except Exception as e:
@@ -132,7 +148,26 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     }
                 }
             await self.send(text_data=json.dumps(data))
-
+        if 'leaveroom' in text_data_json.keys():
+            player = players.get_player(self.scope['session']['id'])
+            room = rooms.get_room(text_data_json['leaveroom'])
+            players_left = room.leave_room(player)
+            if players_left < 1:
+                rooms.remove_room(room.name)
+            await self.channel_layer.group_send(
+                'all_users',
+                {
+                    'type': 'room_list',
+                }
+            )
+            data = {
+                'action' : 'room_leave',
+                'payload' : {
+                    'success': True,
+                    'room' : room.name,
+                }
+            }
+            await self.send(text_data=json.dumps(data))
             # await self.send(
             #     {
             #         'type': 'room_data',
@@ -155,6 +190,17 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'action': data['action'],
             'payload': data['payload']
+        }))
+
+    async def room_list(self,event):
+        # Send message to WebSocket
+        print("here");
+        await self.send(text_data=json.dumps({
+            'action': 'room_list',
+            'payload': {
+                'success': True,
+                'rooms':[r.name for r in rooms.rooms]
+            }
         }))
 
 

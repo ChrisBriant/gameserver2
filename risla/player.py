@@ -28,17 +28,20 @@ class Room:
         self.owner = owner
         self.players = [owner]
 
-    # def set_name(name):
-    #     self.name = name
-    #
-    # def set_alias(alias):
-    #     self.alias = alias
-
     def add_player(self,player):
         if player.room:
             raise ValueError("User already joined to room")
         player.room = self.name
         self.players.append(player)
+
+    def get_players(self):
+        return [p.name for p in self.players]
+
+    def leave_room(self,player):
+        if player in self.players:
+            self.players = [p for p in self.players if p != player]
+        return len(self.players)
+
 
 
 class PlayerList:
