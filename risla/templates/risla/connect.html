@@ -22,7 +22,7 @@
 <div id="room" style="display:none;">
   <h2 id="room-name""></h2>
 
-  <div id="members"></div>
+  <div id="player-list"></div>
   <button id="createroom" onclick="leaveRoom()">Leave</button>
 </div>
 
@@ -89,6 +89,25 @@
     roomList.appendChild(roomUL);
   }
 
+
+  function printPlayerList(players, playerList) {
+    playerList.innerHTML = '';
+    let playerUL = document.createElement("UL");
+    for (let player of players) {
+      console.log('here is the player',player);
+      let playerHTML = `
+        <li>
+          <p class="title">
+            ${player}
+            <button onclick="joinRoom('${player}')">Join</button>
+          </p>
+        </li>
+      `
+      playerUL.innerHTML += playerHTML;
+    }
+    playerList.appendChild(playerUL);
+  }
+
   chatSocket.onmessage = (e) => {
       let roomList = document.getElementById('room-list');
       const data = JSON.parse(e.data);
@@ -135,6 +154,12 @@
             //window.location.pathname = `/risla/${data.payload.room}/`;
           }
           break;
+        case 'room_list_players': {
+          console.log('room_list_players', data.payload);
+          let playerList = document.getElementById('player-list');
+          let players = data.payload.players
+          printPlayerList(players,playerList);
+        }
         default:
           console.log('hit default');
       }

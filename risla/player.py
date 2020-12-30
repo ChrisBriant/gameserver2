@@ -40,6 +40,7 @@ class Room:
     def leave_room(self,player):
         if player in self.players:
             self.players = [p for p in self.players if p != player]
+        player.room = None
         return len(self.players)
 
 

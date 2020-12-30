@@ -61,10 +61,20 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         # Leave room group
         print("Disconnecting", self.scope['session']['id'])
         #Remove the disconnected player
-        players.remove_player(self.scope['session']['id'])
+        player = players.get_player(self.scope['session']['id'])
+        players.remove_player(player.id)
         #players = new_players
         print('Players', players.players)
         print('Player Count', len(players.players))
+        players_left = room.leave_room(player.room)
+        if players_left < 1:
+            rooms.remove_room(player.room)
+            await self.channel_layer.group_send(
+                'all_users',
+                {
+                    'type': 'room_list',
+                }
+            )
         # await self.channel_layer.group_discard(
         #     self.room_group_name,
         #     self.channel_name
@@ -95,6 +105,8 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                         'type': 'room_list',
                     }
                 )
+                await self.room_join(room)
+                await self.send_room(room,'list_players')
                 #Doesn't work
                 #send_room_data(self.channel_layer)
             except Exception as e:
@@ -130,14 +142,16 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             room = rooms.get_room(text_data_json['joinroom'])
             try:
                 room.add_player(player)
-                data = {
-                    'action' : 'room_join',
-                    'payload' : {
-                        'success': True,
-                        'room' : text_data_json['joinroom'],
-                        'players' : room.get_players()
-                    }
-                }
+                # data = {
+                #     'action' : 'room_join',
+                #     'payload' : {
+                #         'success': True,
+                #         'room' : text_data_json['joinroom'],
+                #         'players' : room.get_players()
+                #     }
+                # }
+                await self.room_join(room)
+                await self.send_room(room,'list_players')
             except Exception as e:
                 print(e)
                 data = {
@@ -147,7 +161,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                         'message':str(e)
                     }
                 }
-            await self.send(text_data=json.dumps(data))
+                await self.send(text_data=json.dumps(data))
         if 'leaveroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['leaveroom'])
@@ -180,6 +194,16 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
         # Send message to room group
 
+    #Send to a room
+    async def send_room(self,room,type):
+        await self.channel_layer.group_send(
+            room.name,
+            {
+                'type': type,
+                'data': room.name
+            }
+        )
+
 
     # Receive message from room group
     async def room_data(self, event):
@@ -202,6 +226,30 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 'rooms':[r.name for r in rooms.rooms]
             }
         }))
+
+    async def room_join(self,event):
+        # Send message to WebSocket
+        await self.send(text_data=json.dumps({
+            'action': 'room_join',
+            'payload' : {
+                'success': True,
+                'room' : event.name,
+                'players' : event.get_players()
+            }
+        }))
+
+
+    async def list_players(self,event):
+        # Send message to WebSocket
+        room = rooms.get_room(event['data'])
+        players = room.get_players()
+        await self.send(text_data=json.dumps({
+            'action': 'room_list_players',
+            'payload' : {
+                'players' : players
+            }
+        }))
+
 
 
 class RoomConsumer(AsyncWebsocketConsumer):
