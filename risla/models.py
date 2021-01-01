@@ -1,3 +1,27 @@
 from django.db import models
 
-# Create your models here.
+# slug               object
+# name               object
+# occupation         object
+# bplace_country     object
+# birthdate          object
+# birthyear         float64
+# dplace_name        object
+# dplace_country     object
+# deathdate          object
+# age               float64
+class Person(models.Model):
+    slug = models.CharField(max_length=75,null=False)
+    name = models.CharField(max_length=75,null=False)
+    occupation = models.CharField(max_length=50)
+    bplace_country = models.CharField(max_length=50)
+    birthdate = models.DateTimeField(null=True)
+    birthyear = models.IntegerField(null=True)
+    dplace_name = models.CharField(max_length=50)
+    dplace_country = models.CharField(max_length=50)
+    deathdate = models.DateTimeField(null=True)
+    age = models.IntegerField(null=True)
+
+
+class Question(models.Model):
+    question = models.CharField(max_length=255,null=False)
