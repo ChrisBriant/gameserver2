@@ -23,7 +23,8 @@
   <h2 id="room-name""></h2>
 
   <div id="player-list"></div>
-  <button id="createroom" onclick="leaveRoom()">Leave</button>
+  <button id="start" onclick="startGame()" style='display:none;'>Start</button>
+  <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
 
 
@@ -37,6 +38,7 @@
   // );
 
   let currentRoom = '';
+  let playerId;
 
   const chatSocket = new WebSocket(
       `ws://${window.location.host}/ws/risla/`
@@ -98,8 +100,7 @@
       let playerHTML = `
         <li>
           <p class="title">
-            ${player}
-            <button onclick="joinRoom('${player}')">Join</button>
+            ${player.name}
           </p>
         </li>
       `
@@ -115,6 +116,8 @@
 
       console.log('here is the data',data.action);
       switch (data.action) {
+        case 'send_id':
+          playerId = data.payload.player_id;
         case 'name_set':
           console.log('set name');
           if (data.payload.success) {
@@ -159,6 +162,12 @@
           let playerList = document.getElementById('player-list');
           let players = data.payload.players
           printPlayerList(players,playerList);
+          console.log('owner and me', data.payload.owner,playerId)
+          if (playerId === data.payload.owner) {
+            document.getElementById('start').setAttribute('style', 'display:block;');
+          } else {
+            document.getElementById('start').setAttribute('style', 'display:none;');
+          }
         }
         default:
           console.log('hit default');

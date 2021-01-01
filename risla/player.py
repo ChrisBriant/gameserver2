@@ -35,11 +35,14 @@ class Room:
         self.players.append(player)
 
     def get_players(self):
-        return [p.name for p in self.players]
+        return [{'name':p.name, 'id':p.id} for p in self.players]
 
     def leave_room(self,player):
         if player in self.players:
             self.players = [p for p in self.players if p != player]
+        #Change owner if it is the owner who is leaving
+        if self.owner == player and len(self.players) > 0:
+            self.owner = self.players[0]
         player.room = None
         return len(self.players)
 
@@ -71,7 +74,11 @@ class RoomList:
         self.rooms = [r for r in self.rooms if r.name != roomname]
 
     def get_room(self,roomname):
-        return [r for r in self.rooms if r.name == roomname][0]
+        room = [r for r in self.rooms if r.name == roomname]
+        if len(room) > 0:
+            return room[0]
+        else:
+            return None
 
 
 

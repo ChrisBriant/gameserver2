@@ -54,6 +54,14 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         #     'player_id':id
         # }))
         await self.send(text_data=json.dumps(data))
+        #Send ID
+        data = {
+            'action' : 'send_id',
+            'payload' : {
+                    'player_id':id
+            }
+        }
+        await self.send(text_data=json.dumps(data))
 
 
 
@@ -63,24 +71,27 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         #Remove the disconnected player
         player = players.get_player(self.scope['session']['id'])
         players.remove_player(player.id)
-        #players = new_players
-        print('Players', players.players)
-        print('Player Count', len(players.players))
-        players_left = room.leave_room(player.room)
-        if players_left < 1:
-            rooms.remove_room(player.room)
-            await self.channel_layer.group_send(
-                'all_users',
-                {
-                    'type': 'room_list',
-                }
-            )
-        # await self.channel_layer.group_discard(
-        #     self.room_group_name,
-        #     self.channel_name
-        # )
-
-
+        room = rooms.get_room(player.room)
+        if room:
+            #Sending messages on disconnect doesn't seem to work
+            print('Players', players.players)
+            print('Player Count', len(players.players))
+            players_left = room.leave_room(player)
+            if players_left < 1:
+                rooms.remove_room(room.name)
+                await self.channel_layer.group_send(
+                    'all_users',
+                    {
+                        'type': 'room_list',
+                    }
+                )
+                await self.channel_layer.group_discard(
+                    room.name,
+                    self.channel_name
+                )
+            else:
+                print("NOT REMOVING")
+                await self.send_room(room,'list_players')
 
 
     # Receive message from WebSocket
@@ -107,6 +118,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 )
                 await self.room_join(room)
                 await self.send_room(room,'list_players')
+
                 #Doesn't work
                 #send_room_data(self.channel_layer)
             except Exception as e:
@@ -151,7 +163,12 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 #     }
                 # }
                 await self.room_join(room)
+                await self.channel_layer.group_add(
+                    room.name,
+                    self.channel_name
+                )
                 await self.send_room(room,'list_players')
+                print('list players')
             except Exception as e:
                 print(e)
                 data = {
@@ -166,8 +183,15 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['leaveroom'])
             players_left = room.leave_room(player)
+            #Destroy if empty, if not send the list of players
             if players_left < 1:
                 rooms.remove_room(room.name)
+                await self.channel_layer.group_discard(
+                    room.name,
+                    self.channel_name
+                )
+            else:
+                await self.send_room(room,'list_players')
             await self.channel_layer.group_send(
                 'all_users',
                 {
@@ -246,7 +270,8 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'action': 'room_list_players',
             'payload' : {
-                'players' : players
+                'players' : players,
+                'owner' : room.owner.id
             }
         }))
 
