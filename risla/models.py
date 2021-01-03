@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Count
+import random
 
 # slug               object
 # name               object
@@ -10,6 +12,13 @@ from django.db import models
 # dplace_country     object
 # deathdate          object
 # age               float64
+
+class PersonManager(models.Manager):
+    def random(self):
+        count = self.aggregate(count=Count('id'))['count']
+        random_index = random.randint(0, count - 1)
+        return self.all()[random_index]
+
 class Person(models.Model):
     slug = models.CharField(max_length=75,null=False)
     name = models.CharField(max_length=75,null=False)
@@ -21,6 +30,7 @@ class Person(models.Model):
     dplace_country = models.CharField(max_length=50)
     deathdate = models.DateTimeField(null=True)
     age = models.IntegerField(null=True)
+    random_objects = PersonManager()
 
 
 class Question(models.Model):

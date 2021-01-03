@@ -23,6 +23,22 @@
   <h2 id="room-name""></h2>
 
   <div id="player-list"></div>
+
+  <div id="room-action-area" style="display:none;">
+    <div id="sender-action-panel" style="display:none;">
+      <p>Select from one of the suggested questions below or type a question.
+        Questions must be questions that can be answered with either yes or no.</p>
+      <textarea id="question-input" rows="4" cols="80"></textarea>
+      <button id='send-question' type='button'></button>
+    </div>
+    <div id="receiver-action-panel" style="display:none;">
+      <p id="question"></p>
+      <button id='yes' type='button'></button>
+      <button id='no' type='button'></button>
+    </div>
+  </div>
+
+
   <button id="start" onclick="startGame()" style='display:none;'>Start</button>
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
@@ -43,6 +59,29 @@
   const chatSocket = new WebSocket(
       `ws://${window.location.host}/ws/risla/`
   );
+
+  //Handles the displaying / hiding of the room action area
+  function roomActionArea(event,data) {
+      switch (event) {
+        case 'turn-taker':
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          break;
+        case 'turn-receiver':
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
+          break;
+      }
+  }
+
+  //Initiate the game
+  function startGame() {
+    chatSocket.send(JSON.stringify({
+        'start_game': ''
+    }));
+  }
 
   function createRoom() {
     const roomName = document.getElementById('roomname').value;
@@ -100,7 +139,7 @@
       let playerHTML = `
         <li>
           <p class="title">
-            ${player.name}
+            ${player.name} -- ${player.celeb}
           </p>
         </li>
       `
@@ -142,7 +181,7 @@
             document.getElementById('room-setup').setAttribute('style', 'display:none;');
             document.getElementById('room-list').setAttribute('style', 'display:none;');
             document.getElementById('room').setAttribute('style', 'display:block;');
-            console.log(data.payload.players);
+            //console.log(data.payload.players);
             currentRoom = data.payload.room;
             //window.location.pathname = `/risla/${data.payload.room}/`;
           }
@@ -168,6 +207,17 @@
           } else {
             document.getElementById('start').setAttribute('style', 'display:none;');
           }
+          break;
+        }
+        case 'init_game': {
+          console.log('init_game',data.payload);
+          if (data.payload.owner_id === data.payload.player_id) {
+            roomActionArea('turn-taker',null);
+            document.getElementById('start').setAttribute('style', 'display:none;');
+          } else {
+            roomActionArea('turn-receiver',null);
+          }
+          break;
         }
         default:
           console.log('hit default');

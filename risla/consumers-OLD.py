@@ -1,6 +1,7 @@
 # chat/consumers.py
 import json
 from .player import *
+from .models import *
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 import secrets
@@ -28,18 +29,20 @@ rooms = RoomList()
 def get_random_celeb():
     return Person.random_objects.random()
 
+
 class PlayerConsumer(AsyncWebsocketConsumer):
 
 
     async def connect(self):
         print("Hello")
-        #print(self.scope["session"])
+        #print(self.scope["session"].)
         id = secrets.token_hex(15)
         room_id = secrets.token_hex(15)
         self.scope["session"]["id"] = id
         newplayer = Player(id)
         players.add_player(newplayer)
-        print('players',players.players)
+
+        newplayer.set_name('bob')
         #self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = 'all_users'
         #
@@ -123,7 +126,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     }
                 )
                 await self.room_join(room)
-                await self.send_room(room,'list_players')
+                data = {
+                    'room' : room,
+                    'player' : owner
+                }
+                await self.send_room(data,'list_players')
 
                 #Doesn't work
                 #send_room_data(self.channel_layer)
@@ -153,13 +160,12 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 'action' : 'name_set',
                 'payload' : {
                     'success': True,
-                    'name' : text_data_json['setname']
+                    'name' : text_data_json['setname'],
                 }
 
             }
             await self.send(text_data=json.dumps(data))
             await self.room_list(None)
-            print('This is annoying')
         if 'joinroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['joinroom'])
@@ -178,7 +184,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     room.name,
                     self.channel_name
                 )
-                await self.send_room(room,'list_players')
+                data = {
+                    'room' : room,
+                    'player' : player
+                }
+                await self.send_room(data,'list_players')
                 print('list players')
             except Exception as e:
                 print(e)
@@ -202,7 +212,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     self.channel_name
                 )
             else:
-                await self.send_room(room,'list_players')
+                data = {
+                    'room' : room,
+                    'player' : player
+                }
+                await self.send_room(data,'list_players')
             await self.channel_layer.group_send(
                 'all_users',
                 {
@@ -217,22 +231,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 }
             }
             await self.send(text_data=json.dumps(data))
-        if 'start_game' in text_data_json.keys():
-            player = players.get_player(self.scope['session']['id'])
-            room = rooms.get_room(player.room)
-            game = {
-                'current_round' : 1,
-                'current_player' : player.id,
-                'players_left' : [p for p in room.get_players(player)]
-            }
-            print(game, room.name)
-            await self.channel_layer.group_send(
-                room.name,
-                {
-                    'type': 'init_game',
-                    'owner': room.owner.id
-                }
-            )
             # await self.send(
             #     {
             #         'type': 'room_data',
@@ -246,13 +244,15 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         # Send message to room group
 
     #Send to a room
-    async def send_room(self,room,type):
+    async def send_room(self,data,type):
+
+        room = data['room']
+        print('send_room',data)
         await self.channel_layer.group_send(
             room.name,
             {
                 'type': type,
-                'data': room.name,
-                'sender_chanel_name' : self.channel_name
+                'data': data
             }
         )
 
@@ -261,7 +261,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
     async def room_data(self, event):
         data = event['data']
         print('DATA HERE',data)
-
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'action': data['action'],
@@ -270,24 +269,12 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
     async def room_list(self,event):
         # Send message to WebSocket
-        print("here", rooms, [r for r in rooms.rooms]);
+        print("here");
         await self.send(text_data=json.dumps({
             'action': 'room_list',
             'payload': {
                 'success': True,
                 'rooms':[r.name for r in rooms.rooms]
-            }
-        }))
-
-    async def init_game(self,event):
-        # Send message to WebSocket
-        player = players.get_player(self.scope['session']['id'])
-        owner = event['owner']
-        await self.send(text_data=json.dumps({
-            'action': 'init_game',
-            'payload': {
-                'owner_id': owner,
-                'player_id': player.id
             }
         }))
 
@@ -297,7 +284,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             'action': 'room_join',
             'payload' : {
                 'success': True,
-                'room' : event.name,
+                'room' : event.name
                 #'players' : event.get_players()
             }
         }))
@@ -305,51 +292,46 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
     async def list_players(self,event):
         # Send message to WebSocket
-        player = players.get_player(self.scope['session']['id'])
-        room = rooms.get_room(event['data'])
-        room_members = room.get_players(player)
-
-        print('list_players')
-        # print(self.channel_name)
-        # print(event['sender_chanel_name'])
-        # if self.channel_name != event['sender_chanel_name']:
-
+        # room = rooms.get_room(event['data']['room'])
+        # player = event['data']['player']
+        # players = room.get_players()
         await self.send(text_data=json.dumps({
             'action': 'room_list_players',
-            'payload' : {
-                'players' : room_members,
-                'owner' : room.owner.id
-            }
+            # 'payload' : {
+            #     'players' : players,
+            #     'owner' : room.owner.id
+            # }
+            'payload' : event['data']
         }))
 
 
 
-class RoomConsumer(AsyncWebsocketConsumer):
-
-    async def connect(self):
-        print("IN ROOM")
-        print('SESSION ID',self.scope["session"].__dict__)
-        print('players',[p.id for p in players.players])
-        self.room_group_name = self.scope['url_route']['kwargs']['room_name']
-
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
-        data = {
-            'action' : 'player_list',
-            'payload' : {
-                    'success': True,
-                    'players': [p.name for p in players.players]
-            }
-        }
-        await self.send(text_data=json.dumps(data))
-
-    # Receive message from WebSocket
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-
-    async def disconnect(self, close_code):
-        # Leave room group
-        print("Disconnecting", self.scope['session']['id'])
+# class RoomConsumer(AsyncWebsocketConsumer):
+#
+#     async def connect(self):
+#         print("IN ROOM")
+#         print('SESSION ID',self.scope["session"].__dict__)
+#         print('players',[p.id for p in players.players])
+#         self.room_group_name = self.scope['url_route']['kwargs']['room_name']
+#
+#         await self.channel_layer.group_add(
+#             self.room_group_name,
+#             self.channel_name
+#         )
+#         await self.accept()
+#         data = {
+#             'action' : 'player_list',
+#             'payload' : {
+#                     'success': True,
+#                     'players': [p.name for p in players.players]
+#             }
+#         }
+#         await self.send(text_data=json.dumps(data))
+#
+#     # Receive message from WebSocket
+#     async def receive(self, text_data):
+#         text_data_json = json.loads(text_data)
+#
+#     async def disconnect(self, close_code):
+#         # Leave room group
+#         print("Disconnecting", self.scope['session']['id'])

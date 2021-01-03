@@ -1,12 +1,20 @@
+from .models import Person
+
+
 class Player:
 
     def __init__(self, id):
         self.id = id
         self.asks = []
         self.room = None
+        self.celeb = None
 
-    def set_name(name):
+    def set_name(self,name):
         self.name = name
+        #Get random celbrities
+        # celeb = Person.random_objects.random()
+        # self.celeb = celeb.name
+
 
     def set_alias(alias):
         self.alias = alias
@@ -34,8 +42,12 @@ class Room:
         player.room = self.name
         self.players.append(player)
 
-    def get_players(self):
-        return [{'name':p.name, 'id':p.id} for p in self.players]
+    # def get_players(self):
+    #     return [{'name':p.name, 'id':p.id, 'celeb':p.celeb} for p in self.players]
+
+    def get_players(self,player):
+        return [{'name':p.name, 'id':p.id, 'celeb':p.celeb} for p in self.players if p != player]
+
 
     def leave_room(self,player):
         if player in self.players:
@@ -79,6 +91,9 @@ class RoomList:
             return room[0]
         else:
             return None
+
+#Object for managing player turns
+# class Game:
 
 
 
