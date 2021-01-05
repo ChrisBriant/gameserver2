@@ -40,6 +40,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         newplayer = Player(id)
         players.add_player(newplayer)
         print('players',players.players)
+        #Create a channel group for that individual player
+        await self.channel_layer.group_add(
+            id,
+            self.channel_name
+        )
         #self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = 'all_users'
         #
@@ -103,7 +108,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
     # Receive message from WebSocket
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
-        #print(text_data_json.keys())
+        print('KEYS',text_data_json.keys())
         #print(self.channel_name)
         if 'newroom' in text_data_json.keys():
             #Create a new room
@@ -223,9 +228,16 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             game = {
                 'current_round' : 1,
                 'current_player' : player.id,
-                'players_left' : [p for p in room.get_players(player)]
+                'players_left' : [p for p in room.get_players(player)],
+                'await_response' : False
             }
-            print(game, room.name)
+            game['players_left'].append({'name':player.name, 'id':player.id, 'celeb':player.celeb})
+            #Load the game dictionary with the players for tracking
+            for p in game['players_left']:
+                game[p['id']] = dict()
+                print('settingup', p['id'] )
+            room.game = game
+
             await self.channel_layer.group_send(
                 room.name,
                 {
@@ -233,6 +245,83 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     'owner': room.owner.id
                 }
             )
+        if 'send_question' in text_data_json.keys():
+            player = players.get_player(self.scope['session']['id'])
+            room = rooms.get_room(player.room)
+            game = room.game
+            question = text_data_json['send_question']
+            print('send question',question)
+
+            #Get the remaining players and then set the current player
+            remaining_players = [ p for p in game['players_left'] if p != player]
+            if len(remaining_players) > 0:
+                if player.id == game['current_player']:
+                    #nextplayer
+                    game['current_player'] = remaining_players[0]['id']
+                    game['receiving_player'] = player.id
+                    game['await_response'] = True
+                    game['response_list'] = [p for p in room.get_players(player) if p != player]
+                    #Question history
+                    game[player.id][game['current_round']] = dict()
+                    game[player.id][game['current_round']]['question'] = question
+                    game[player.id][game['current_round']]['responses'] = []
+                    #Send response
+                    await self.channel_layer.group_send(
+                        room.name,
+                        {
+                            'type': 'send_question',
+                            'sender': {
+                                'id' : player.id,
+                                'celeb' : player.celeb
+                            },
+                            'question' : question
+                        }
+                    )
+                    print(game)
+        if 'reply_yesno' in text_data_json.keys():
+            player = players.get_player(self.scope['session']['id'])
+            room = rooms.get_room(player.room)
+            game = room.game
+            response = text_data_json['reply_yesno']
+            #Check user hasn't responded and then remove from list
+            if player.id in [p['id'] for p in game['response_list']]:
+                game['response_list'] = [p for p in game['response_list'] if p['id'] != player.id]
+                #Record response
+                game[game['receiving_player']][game['current_round']]['responses'] = {
+                    'player' : player,
+                    'response' : response
+                }
+                print('REPLY_YESNO', game)
+                if len(game['response_list']) == 0:
+                    last_response = True
+                else:
+                    last_response = False
+                #send response to receiving player
+                await self.channel_layer.group_send(
+                    game['receiving_player'],
+                    {
+                        'type': 'receive_yesno',
+                        'sender': player.celeb,
+                        'response' : response,
+                        'last_response' : last_response
+                    }
+                )
+            if len(game['response_list']) == 0:
+                #Others have all responded ready to move on
+                game['await_response'] = False
+                #Signal to the current player that it is now their turn
+                # await self.channel_layer.group_send(
+                #     room.name,
+                #     {
+                #         'type': 'init_game',
+                #         'owner': game['current_player']
+                #     }
+                # )
+
+
+            else:
+                game['current_round'] += 1
+                #Need to change turns
             # await self.send(
             #     {
             #         'type': 'room_data',
@@ -322,6 +411,27 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             }
         }))
 
+
+    async def send_question(self,event):
+        print('Here is the event', event)
+        await self.send(text_data=json.dumps({
+            'action': 'receive_question',
+            'payload' : {
+                'sender' :event['sender'],
+                'question' : event['question']
+            }
+        }))
+
+
+    async def receive_yesno(self,event):
+        await self.send(text_data=json.dumps({
+            'action': 'receive_yesno',
+            'payload' : {
+                'sender' :event['sender'],
+                'response' : event['response'],
+                'last_response' : event['last_response']
+            }
+        }))
 
 
 class RoomConsumer(AsyncWebsocketConsumer):
