@@ -229,6 +229,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 'current_round' : 1,
                 'current_player' : player.id,
                 'players_left' : [p for p in room.get_players(player)],
+                'turns' : [p for p in room.get_players(player)],
                 'await_response' : False
             }
             game['players_left'].append({'name':player.name, 'id':player.id, 'celeb':player.celeb})
@@ -291,11 +292,12 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     'player' : player,
                     'response' : response
                 }
-                print('REPLY_YESNO', game)
+
                 if len(game['response_list']) == 0:
                     last_response = True
                 else:
                     last_response = False
+
                 #send response to receiving player
                 await self.channel_layer.group_send(
                     game['receiving_player'],
@@ -306,21 +308,32 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                         'last_response' : last_response
                     }
                 )
-            if len(game['response_list']) == 0:
-                #Others have all responded ready to move on
-                game['await_response'] = False
-                #Signal to the current player that it is now their turn
-                # await self.channel_layer.group_send(
-                #     room.name,
-                #     {
-                #         'type': 'init_game',
-                #         'owner': game['current_player']
-                #     }
-                # )
-
-
-            else:
+        if 'end_turn' in text_data_json.keys():
+            #Others have all responded ready to move on
+            player = players.get_player(self.scope['session']['id'])
+            room = rooms.get_room(player.room)
+            game = room.game
+            game['await_response'] = False
+            game['turns'] = [p for p in game['turns'] if p['id'] != player.id ]
+            if len(game['turns']) == 0:
                 game['current_round'] += 1
+                print('end of round', game['current_player'], room.owner)
+            else:
+                game['current_player'] = game['turns'][0]['id']
+            #game['current_player'] = player.id
+            game['players_left'] = [p for p in room.get_players(player)]
+
+            print('switch over', game)
+            #Signal to the current player that it is now their turn
+            await self.channel_layer.group_send(
+                room.name,
+                {
+                    'type': 'init_game',
+                    'owner': game['current_player']
+                }
+            )
+
+                #game['current_round'] += 1
                 #Need to change turns
             # await self.send(
             #     {

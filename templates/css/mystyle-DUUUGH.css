@@ -138,6 +138,11 @@ h1, h2, h3 {
   color: #40739e;
 }
 
+.player-list {
+  margin : 1rem;
+  background-color: #b0bdbf;
+}
+
 
 /***********SEARCH****************/
 

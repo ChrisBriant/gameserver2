@@ -22,13 +22,10 @@
 <div id="room" style="display:none;">
   <h2 id="room-name""></h2>
 
-  <div id="player-list" class="panel">
-    <h3>Players in this Room</h2>
-    <!-- <div  class="row"></div> -->
-  </div>
+  <div id="player-list" class="panel"></div>
 
-  <div id="room-action-area" class="panel" style="display:none;">
-    <h4>My Questions</h4>
+  <div id="room-action-area" style="display:none;">
+    <h3>My Questions</h3>
     <div id="question-history"></div>
     <div id="sender-action-panel" style="display:none;">
       <div id='end-turn' style='display:none;'>
@@ -42,7 +39,6 @@
       <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
     </div>
     <div id="receiver-action-panel" style="display:none;">
-      <h4>Respond</h4>
       <div id="question"></div>
       <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
       <button id='no' type='button' onclick="sendYesNo(this.id)">No</button>
@@ -195,25 +191,19 @@
 
   function printPlayerList(players, playerList) {
     playerList.innerHTML = '';
-
+    let playerUL = document.createElement("UL");
     for (let player of players) {
       console.log('here is the player',player);
-      let playerUL = document.createElement("DIV");
-      playerUL.setAttribute('class','row');
       let playerHTML = `
-          <span class="col">
-            <span class="label-text">Name: </span>
-            ${player.name}
-          </span>
-          <span class="col">
-            <span class="label-text">Famous person name: </span>
-            ${player.celeb}
-          </span>
+        <li>
+          <p class="title">
+            ${player.name} -- ${player.celeb}
+          </p>
+        </li>
       `
       playerUL.innerHTML += playerHTML;
-      playerList.appendChild(playerUL);
     }
-
+    playerList.appendChild(playerUL);
   }
 
   chatSocket.onmessage = (e) => {
