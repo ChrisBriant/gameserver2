@@ -22,14 +22,15 @@
 <div id="room" style="display:none;">
   <h2 id="room-name""></h2>
 
-  <div id="player-list" class="panel">
+  <div id="player-list" class="panel" style="display:none;">
     <h3>Players in this Room</h2>
     <!-- <div  class="row"></div> -->
   </div>
 
   <div id="room-action-area" class="panel" style="display:none;">
-    <h4>My Questions</h4>
-    <div id="question-history"></div>
+    <div id="question-history" style="display:none;">
+          <h4>My Questions</h4>
+    </div>
     <div id="sender-action-panel" style="display:none;">
       <div id='end-turn' style='display:none;'>
         <span>All responses received
@@ -41,6 +42,7 @@
       <textarea id="question-input" rows="4" cols="80"></textarea>
       <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
     </div>
+    <h3 id="wait-message"></h3>
     <div id="receiver-action-panel" style="display:none;">
       <h4>Respond</h4>
       <div id="question"></div>
@@ -67,6 +69,9 @@
   let currentRoom = '';
   let playerId;
   let questionCount = 0;
+  let myQuestions = [];
+  //let responsesReceived = [];
+  //let currentRoomMembers = [];
 
   const chatSocket = new WebSocket(
       `ws://${window.location.host}/ws/risla/`
@@ -80,27 +85,37 @@
         case 'turn-taker':
           document.getElementById('room-action-area').setAttribute('style', 'display:block;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
-          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           document.getElementById('end-turn').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           break;
         case 'turn-receiver':
           document.getElementById('room-action-area').setAttribute('style', 'display:block;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
-          document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
+          document.getElementById('wait-message').innerHTML = "Waiting for Response";
+          //console.log('why am i here?');
+          //document.getElementById('wait-message').setAttribute('style','display:block;');
           break;
         case 'question-sent':
-          console.log('sent a question');
+          console.log('sent a question',myQuestions);
+          if(myQuestions.length > 0) {
+            document.getElementById('question-history').setAttribute('style','display:block;');
+          }
           let questionContainer = document.createElement('DIV');
           questionContainer.setAttribute('id',`question-${questionCount}`);
           questionCount++;
           let question = document.createElement('P');
           let list = document.createElement('UL');
-          question.innerHTML = data.question;
+          for(i=0;i<myQuestions.length;i++)
+          {
+            question.innerHTML = `<strong>Question ${i+1}</strong> ${myQuestions[i]}`;
+          }
           questionContainer.append(question);
           questionContainer.append(list);
           document.getElementById('question-history').append(questionContainer);
           break;
         case 'question-received':
+          document.getElementById('wait-message').setAttribute('style','display:none');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
           let playerName = document.createElement('p');
           playerName.innerHTML = `<strong>${data.sender.celeb} asks:</strong> ${data.question}`;
           document.getElementById('question').append(playerName);
@@ -117,6 +132,14 @@
       }
   }
 
+  //Reset all the room variables
+  function resetAll() {
+    currentRoom = '';
+    questionCount = 0;
+    myQuestions = [];
+    //responsesReceived = [];
+    //currentRoomMembers = [];
+  }
 
   //// TODO: Function below
   function endTurn(id) {
@@ -268,6 +291,9 @@
           console.log('room_list_players', data.payload);
           let playerList = document.getElementById('player-list');
           let players = data.payload.players
+          if(players.length > 0) {
+            playerList.setAttribute('style','display:block;');
+          }
           printPlayerList(players,playerList);
           console.log('owner and me', data.payload.owner,playerId)
           if (playerId === data.payload.owner) {
@@ -290,6 +316,7 @@
         case 'receive_question': {
           console.log(data.payload)
           if (data.payload.sender.id === playerId) {
+            myQuestions.push(data.payload.question);
             roomActionArea('question-sent',data.payload);
           } else {
             roomActionArea('question-received',data.payload);

@@ -3,7 +3,8 @@ import json
 from .player import *
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
-import secrets
+from difflib import SequenceMatcher
+import secrets,pprint
 
 players = PlayerList()
 rooms = RoomList()
@@ -252,33 +253,38 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             game = room.game
             question = text_data_json['send_question']
             print('send question',question)
-
-            #Get the remaining players and then set the current player
-            remaining_players = [ p for p in game['players_left'] if p != player]
-            if len(remaining_players) > 0:
-                if player.id == game['current_player']:
-                    #nextplayer
-                    game['current_player'] = remaining_players[0]['id']
-                    game['receiving_player'] = player.id
-                    game['await_response'] = True
-                    game['response_list'] = [p for p in room.get_players(player) if p != player]
-                    #Question history
-                    game[player.id][game['current_round']] = dict()
-                    game[player.id][game['current_round']]['question'] = question
-                    game[player.id][game['current_round']]['responses'] = []
-                    #Send response
-                    await self.channel_layer.group_send(
-                        room.name,
-                        {
-                            'type': 'send_question',
-                            'sender': {
-                                'id' : player.id,
-                                'celeb' : player.celeb
-                            },
-                            'question' : question
-                        }
-                    )
-                    print(game)
+            matchscore = SequenceMatcher(None, question, player.celeb).ratio()
+            if matchscore > 0.7:
+                #Trigger player wins
+                print('Trigger Win')
+                self.handle_player_win(player,room,game)
+            else:
+                #Get the remaining players and then set the current player
+                remaining_players = [ p for p in game['players_left'] if p != player]
+                if len(remaining_players) > 0:
+                    if player.id == game['current_player']:
+                        #nextplayer
+                        game['current_player'] = remaining_players[0]['id']
+                        game['receiving_player'] = player.id
+                        game['await_response'] = True
+                        game['response_list'] = [p for p in room.get_players(player) if p != player]
+                        #Question history
+                        game[player.id][game['current_round']] = dict()
+                        game[player.id][game['current_round']]['question'] = question
+                        game[player.id][game['current_round']]['responses'] = []
+                        #Send response
+                        await self.channel_layer.group_send(
+                            room.name,
+                            {
+                                'type': 'send_question',
+                                'sender': {
+                                    'id' : player.id,
+                                    'celeb' : player.celeb
+                                },
+                                'question' : question
+                            }
+                        )
+                        print(game)
         if 'reply_yesno' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(player.room)
@@ -346,6 +352,15 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         #message = text_data_json['message']
 
         # Send message to room group
+
+    async def handle_player_win(self,player,room,game):
+        #Add to ranking table
+        #Take out of room, but not channel
+        print('heelo')
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.print(game)
+        #Signal to other players that this player has guessed correctly
+        #If not more players then end the game
 
     #Send to a room
     async def send_room(self,room,type):
