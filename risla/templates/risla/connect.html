@@ -46,14 +46,23 @@
     <div id="receiver-action-panel" style="display:none;">
       <h4>Respond</h4>
       <div id="question"></div>
-      <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
-      <button id='no' type='button' onclick="sendYesNo(this.id)">No</button>
+      <div id="yesnopanel">
+        <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
+        <button id='no' type='button' onclick="sendYesNo(this.id)">No</button>
+      </div>
     </div>
   </div>
 
 
   <button id="start" onclick="startGame()" style='display:none;'>Start</button>
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
+</div>
+
+<div id="youhavewon" style='display:none;'>
+  <h1>Congratulations! You have guessed correctly.</h1>
+</div>
+
+<div id="winnerpanel">
 </div>
 
 
@@ -70,6 +79,8 @@
   let playerId;
   let questionCount = 0;
   let myQuestions = [];
+  let winners = [];
+  let won = false;
   //let responsesReceived = [];
   //let currentRoomMembers = [];
 
@@ -129,6 +140,22 @@
           if(data.last_response) {
             document.getElementById('end-turn').setAttribute('style', 'display:block;');
           }
+          break;
+        case 'youhavewon':
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+
+          document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
+          document.getElementById('youhavewon').setAttribute('style', 'display:block;');
+          document.getElementById('yesnopanel').setAttribute('style', 'display:none;');
+          break;
+        case 'player-guess-correct':
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+
+          document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
       }
   }
 
@@ -137,6 +164,8 @@
     currentRoom = '';
     questionCount = 0;
     myQuestions = [];
+    winners = [];
+    won = false;
     //responsesReceived = [];
     //currentRoomMembers = [];
   }
@@ -327,6 +356,39 @@
         case 'receive_yesno': {
           console.log('yesno',data.payload)
           roomActionArea('reply-received',data.payload);
+          break;
+        }
+        case 'game_over': {
+          console.log('game over',data.payload)
+          break;
+        }
+        case 'guess_correct': {
+          winners.push(data.payload.winner);
+          winnersPanel = document.getElementById('winnerpanel');
+          winnersPanel.innerHTML = '';
+          winnerDiv = document.createElement('div');
+          for(let i=0;i<winners.length;i++) {
+            winnerDiv.innerHTML = `
+              <span>${winners[i].name} -- ${winners[i].celeb}</span>
+            `;
+          }
+          winnersPanel.append(winnerDiv);
+          console.log(data.payload)
+          if (data.payload.winner === playerId) {
+            roomActionArea('youhavewon');
+          } else {
+            roomActionArea('player-guess-correct');
+            //roomActionArea('turn-receiver',null);
+          }
+
+          console.log('nextplayer',data.payload.next_player);
+          if (data.payload.next_player === playerId) {
+            document.getElementById('wait-message').setAttribute('style','display:none');
+            roomActionArea('turn-taker');
+          } else {
+            document.getElementById('wait-message').setAttribute('style','display:none');
+            roomActionArea('turn-receiver');
+          }
           break;
         }
         default:

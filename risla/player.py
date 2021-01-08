@@ -35,12 +35,17 @@ class Room:
         self.name = name
         self.owner = owner
         self.players = [owner]
+        self.winners = []
 
     def add_player(self,player):
         if player.room:
             raise ValueError("User already joined to room")
         player.room = self.name
         self.players.append(player)
+
+    def remove_player(self,player):
+        player.room = None
+        self.players = [p for p in self.players if player.id != p.id]
 
     # def get_players(self):
     #     return [{'name':p.name, 'id':p.id, 'celeb':p.celeb} for p in self.players]

@@ -4,26 +4,11 @@ from .player import *
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from difflib import SequenceMatcher
-import secrets,pprint
+import secrets,json
 
 players = PlayerList()
 rooms = RoomList()
 
-#Send the room list will need to be called continually
-# async def send_room_data(channel_layer):
-#     await channel_layer.group_send(
-#         'all_users',
-#         {
-#             'type': 'room_data',
-#             'data': {
-#                 'action' : 'room_list',
-#                 'payload' : {
-#                         'success': True,
-#                         'rooms': [r.name for r in rooms.rooms]
-#                 }
-#             }
-#         }
-#     )
 
 @sync_to_async
 def get_random_celeb():
@@ -33,21 +18,18 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
 
     async def connect(self):
-        print("Hello")
-        #print(self.scope["session"])
         id = secrets.token_hex(15)
         room_id = secrets.token_hex(15)
         self.scope["session"]["id"] = id
         newplayer = Player(id)
         players.add_player(newplayer)
-        print('players',players.players)
         #Create a channel group for that individual player
         await self.channel_layer.group_add(
             id,
             self.channel_name
         )
-        #self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = 'all_users'
+
         #
         # # Join room group
         await self.channel_layer.group_add(
@@ -62,9 +44,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     'rooms': [r.name for r in rooms.rooms]
             }
         }
-        # await self.send(text_data=json.dumps({
-        #     'player_id':id
-        # }))
+
         await self.send(text_data=json.dumps(data))
         #Send ID
         data = {
@@ -110,7 +90,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
         print('KEYS',text_data_json.keys())
-        #print(self.channel_name)
         if 'newroom' in text_data_json.keys():
             #Create a new room
             owner = players.get_player(self.scope['session']['id'])
@@ -165,27 +144,17 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             }
             await self.send(text_data=json.dumps(data))
             await self.room_list(None)
-            print('This is annoying')
         if 'joinroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['joinroom'])
             try:
                 room.add_player(player)
-                # data = {
-                #     'action' : 'room_join',
-                #     'payload' : {
-                #         'success': True,
-                #         'room' : text_data_json['joinroom'],
-                #         'players' : room.get_players()
-                #     }
-                # }
                 await self.room_join(room)
                 await self.channel_layer.group_add(
                     room.name,
                     self.channel_name
                 )
                 await self.send_room(room,'list_players')
-                print('list players')
             except Exception as e:
                 print(e)
                 data = {
@@ -237,7 +206,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             #Load the game dictionary with the players for tracking
             for p in game['players_left']:
                 game[p['id']] = dict()
-                print('settingup', p['id'] )
             room.game = game
 
             await self.channel_layer.group_send(
@@ -257,7 +225,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             if matchscore > 0.7:
                 #Trigger player wins
                 print('Trigger Win')
-                self.handle_player_win(player,room,game)
+                await self.handle_player_win(player,room,game)
             else:
                 #Get the remaining players and then set the current player
                 remaining_players = [ p for p in game['players_left'] if p != player]
@@ -323,13 +291,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             game['turns'] = [p for p in game['turns'] if p['id'] != player.id ]
             if len(game['turns']) == 0:
                 game['current_round'] += 1
-                print('end of round', game['current_player'], room.owner)
             else:
                 game['current_player'] = game['turns'][0]['id']
             #game['current_player'] = player.id
             game['players_left'] = [p for p in room.get_players(player)]
 
-            print('switch over', game)
             #Signal to the current player that it is now their turn
             await self.channel_layer.group_send(
                 room.name,
@@ -339,26 +305,43 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 }
             )
 
-                #game['current_round'] += 1
-                #Need to change turns
-            # await self.send(
-            #     {
-            #         'type': 'room_data',
-            #         'message': json.dumps({'success':True})
-            #     }
-            # )
-        #BELOW SENDS TO CONNECTED INDIVIDUAL
-        #await self.send(text_data=json.dumps("Hello world!"))
-        #message = text_data_json['message']
 
-        # Send message to room group
 
     async def handle_player_win(self,player,room,game):
         #Add to ranking table
         #Take out of room, but not channel
         print('heelo')
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.print(game)
+        room.remove_player(player)
+        game['players_left'] = room.get_players(player)
+        room.winners.append({
+            'name' : player.name,
+            'id' : player.id,
+            'celeb' : player.celeb
+        })
+        #If there is only one remaining player then the game is over
+        if(len(game['players_left']) == 1):
+             await self.channel_layer.group_send(
+                 room.name,
+                 {
+                     'type': 'game_over',
+                     'winners': room.winners
+                 }
+             )
+        else:
+            game['current_player'] = game['players_left'][0]['id']
+            game['await_response'] = True
+            game['response_list'] = [p for p in room.get_players(player) if p != player]
+            #Signal other players that someone has guessed correctly
+            await self.channel_layer.group_send(
+             room.name,
+             {
+                 'type': 'guess_correct',
+                 'winner': player.id,
+                 'next_player' : game['current_player']
+             }
+            )
+        for key, value in game.items():
+            print(key, ' : ', value)
         #Signal to other players that this player has guessed correctly
         #If not more players then end the game
 
@@ -377,7 +360,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
     # Receive message from room group
     async def room_data(self, event):
         data = event['data']
-        print('DATA HERE',data)
 
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
@@ -387,7 +369,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
     async def room_list(self,event):
         # Send message to WebSocket
-        print("here", rooms, [r for r in rooms.rooms]);
         await self.send(text_data=json.dumps({
             'action': 'room_list',
             'payload': {
@@ -426,11 +407,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         room = rooms.get_room(event['data'])
         room_members = room.get_players(player)
 
-        print('list_players')
-        # print(self.channel_name)
-        # print(event['sender_chanel_name'])
-        # if self.channel_name != event['sender_chanel_name']:
-
         await self.send(text_data=json.dumps({
             'action': 'room_list_players',
             'payload' : {
@@ -441,7 +417,6 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
 
     async def send_question(self,event):
-        print('Here is the event', event)
         await self.send(text_data=json.dumps({
             'action': 'receive_question',
             'payload' : {
@@ -462,32 +437,51 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         }))
 
 
-class RoomConsumer(AsyncWebsocketConsumer):
-
-    async def connect(self):
-        print("IN ROOM")
-        print('SESSION ID',self.scope["session"].__dict__)
-        print('players',[p.id for p in players.players])
-        self.room_group_name = self.scope['url_route']['kwargs']['room_name']
-
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-        await self.accept()
-        data = {
-            'action' : 'player_list',
+    async def game_over(self,event):
+        await self.send(text_data=json.dumps({
+            'action': 'game_over',
             'payload' : {
-                    'success': True,
-                    'players': [p.name for p in players.players]
+                'winners' : event['winners'],
             }
-        }
-        await self.send(text_data=json.dumps(data))
+        }))
 
-    # Receive message from WebSocket
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
 
-    async def disconnect(self, close_code):
-        # Leave room group
-        print("Disconnecting", self.scope['session']['id'])
+    async def guess_correct(self,event):
+        await self.send(text_data=json.dumps({
+            'action': 'guess_correct',
+            'payload' : {
+                'winner' :  event['winner'],
+                'next_player' : event['next_player']
+            }
+        }))
+
+
+# class RoomConsumer(AsyncWebsocketConsumer):
+#
+#     async def connect(self):
+#         print("IN ROOM")
+#         print('SESSION ID',self.scope["session"].__dict__)
+#         print('players',[p.id for p in players.players])
+#         self.room_group_name = self.scope['url_route']['kwargs']['room_name']
+#
+#         await self.channel_layer.group_add(
+#             self.room_group_name,
+#             self.channel_name
+#         )
+#         await self.accept()
+#         data = {
+#             'action' : 'player_list',
+#             'payload' : {
+#                     'success': True,
+#                     'players': [p.name for p in players.players]
+#             }
+#         }
+#         await self.send(text_data=json.dumps(data))
+#
+#     # Receive message from WebSocket
+#     async def receive(self, text_data):
+#         text_data_json = json.loads(text_data)
+#
+#     async def disconnect(self, close_code):
+#         # Leave room group
+#         print("Disconnecting", self.scope['session']['id'])
