@@ -81,6 +81,7 @@
   let myQuestions = [];
   let winners = [];
   let won = false;
+  let players = [];
   //let responsesReceived = [];
   //let currentRoomMembers = [];
 
@@ -235,7 +236,7 @@
         <li>
           <p class="title">
             ${room}
-            <button onclick="joinRoom('${room}')">Join</button>
+            <button class="join-btn" onclick="joinRoom('${room}')">Join</button>
           </p>
         </li>
       `
@@ -245,19 +246,20 @@
   }
 
 
-  function printPlayerList(players, playerList) {
+  function printPlayerList(playerList) {
     playerList.innerHTML = '';
 
     for (let player of players) {
       console.log('here is the player',player);
       let playerUL = document.createElement("DIV");
       playerUL.setAttribute('class','row');
+      playerUL.setAttribute('id',player.id);
       let playerHTML = `
           <span class="col">
             <span class="label-text">Name: </span>
             ${player.name}
           </span>
-          <span class="col">
+          <span class="col celeb">
             <span class="label-text">Famous person name: </span>
             ${player.celeb}
           </span>
@@ -319,11 +321,11 @@
         case 'room_list_players': {
           console.log('room_list_players', data.payload);
           let playerList = document.getElementById('player-list');
-          let players = data.payload.players
+          players = data.payload.players
           if(players.length > 0) {
             playerList.setAttribute('style','display:block;');
           }
-          printPlayerList(players,playerList);
+          printPlayerList(playerList);
           console.log('owner and me', data.payload.owner,playerId)
           if (playerId === data.payload.owner) {
             document.getElementById('start').setAttribute('style', 'display:block;');
@@ -363,6 +365,7 @@
           break;
         }
         case 'guess_correct': {
+          console.log(data.payload.winner);
           winners.push(data.payload.winner);
           winnersPanel = document.getElementById('winnerpanel');
           winnersPanel.innerHTML = '';
@@ -373,10 +376,14 @@
             `;
           }
           winnersPanel.append(winnerDiv);
-          console.log(data.payload)
-          if (data.payload.winner === playerId) {
+
+          if (data.payload.winner.id === playerId) {
             roomActionArea('youhavewon');
           } else {
+            //// TODO:  modify the player list to reflect winner
+            //Update win to the players table
+            winnerFromPlayers = players.find(i => i.id === data.payload.winner.id);
+            console.log('players',winnerFromPlayers,data.payload.winner.id,players)
             roomActionArea('player-guess-correct');
             //roomActionArea('turn-receiver',null);
           }

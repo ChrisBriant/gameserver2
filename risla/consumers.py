@@ -336,7 +336,11 @@ class PlayerConsumer(AsyncWebsocketConsumer):
              room.name,
              {
                  'type': 'guess_correct',
-                 'winner': player.id,
+                 'winner': {
+                    'id': player.id,
+                    'name' : player.name,
+                    'celeb' : player.celeb
+                 },
                  'next_player' : game['current_player']
              }
             )
