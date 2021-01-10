@@ -69,4 +69,31 @@ class ChatTests(ChannelsLiveServerTestCase):
         self.driver.switch_to_window(self.driver.window_handles[1])
         self.driver.find_element_by_id('question-input').send_keys(nameguess)
         self.driver.find_element_by_id('send-question').click()
-        
+
+        #Next player takes turn
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('question-input').send_keys('Am I a an object?')
+        self.driver.find_element_by_id('send-question').click()
+        #Other player response no
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('no').click()
+        #Turn switch over
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('end-turn-btn').click()
+        #Player c asks a question
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('question-input').send_keys('Am a rich?')
+        self.driver.find_element_by_id('send-question').click()
+        #Player b responds
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('yes').click()
+        #Player c makes correct guess - trigger end of game
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('end-turn-btn').click()
+        #get the celeb
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        label = self.driver.find_elements_by_class_name('celeb')[1]
+        nameguess = label.text.replace('Famous person name: ', '')
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('question-input').send_keys(nameguess)
+        self.driver.find_element_by_id('send-question').click()

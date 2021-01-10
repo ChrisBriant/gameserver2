@@ -167,6 +167,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps(data))
         if 'leaveroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
+            player.win = False
             room = rooms.get_room(text_data_json['leaveroom'])
             players_left = room.leave_room(player)
             #Destroy if empty, if not send the list of players
@@ -318,13 +319,15 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             'id' : player.id,
             'celeb' : player.celeb
         })
+        player.win=True
         #If there is only one remaining player then the game is over
         if(len(game['players_left']) == 1):
              await self.channel_layer.group_send(
                  room.name,
                  {
                      'type': 'game_over',
-                     'winners': room.winners
+                     'winners': room.winners,
+                     'looser' : game['players_left'][0]
                  }
              )
         else:
@@ -446,6 +449,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             'action': 'game_over',
             'payload' : {
                 'winners' : event['winners'],
+                'looser' : event['looser'],
             }
         }))
 

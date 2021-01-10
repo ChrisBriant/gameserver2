@@ -50,8 +50,13 @@ footer {
   padding: 5px;
   border-radius: 15px;
   background-color: #cfdac8;
+  text-align: left;
 }
 
 .label-text {
   color: #7c9473;
+}
+
+.sub-area {
+  margin-bottom: 1rem;
 }

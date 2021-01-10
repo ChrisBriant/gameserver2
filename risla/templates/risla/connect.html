@@ -22,29 +22,33 @@
 <div id="room" style="display:none;">
   <h2 id="room-name""></h2>
 
+  <div id="youhavewon" style='display:none;'>
+    <h1>Congratulations! You have guessed correctly.</h1>
+  </div>
+
   <div id="player-list" class="panel" style="display:none;">
     <h3>Players in this Room</h2>
     <!-- <div  class="row"></div> -->
   </div>
 
   <div id="room-action-area" class="panel" style="display:none;">
-    <div id="question-history" style="display:none;">
+    <div id="question-history" class="sub-area" style="display:none;">
           <h4>My Questions</h4>
     </div>
-    <div id="sender-action-panel" style="display:none;">
-      <div id='end-turn' style='display:none;'>
-        <span>All responses received
-          <button type="button" onclick="endTurn()">End Turn</button>
-        </span>
-      </div>
+    <div id='end-turn' class="sub-area" style='display:none;'>
+      <span>All responses received
+        <button id="end-turn-btn" class="btn" type="button" onclick="endTurn()">End Turn</button>
+      </span>
+    </div>
+    <div id="sender-action-panel" class="sub-area" style="display:none;">
       <p>Select from one of the suggested questions below or type a question.
         Questions must be questions that can be answered with either yes or no.</p>
       <textarea id="question-input" rows="4" cols="80"></textarea>
       <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
     </div>
     <h3 id="wait-message"></h3>
-    <div id="receiver-action-panel" style="display:none;">
-      <h4>Respond</h4>
+    <div id="receiver-action-panel" class="sub-area" style="display:none;">
+      <p>User Responses</p>
       <div id="question"></div>
       <div id="yesnopanel">
         <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
@@ -58,9 +62,12 @@
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
 
-<div id="youhavewon" style='display:none;'>
-  <h1>Congratulations! You have guessed correctly.</h1>
+<div id="scoreboard" class="panel" style="display:none;">
+  <h2>Game Over</h2>
+  <div id="player-scores" class="row"></div>
 </div>
+
+
 
 <div id="winnerpanel">
 </div>
@@ -95,6 +102,7 @@
   function roomActionArea(event,data) {
       switch (event) {
         case 'turn-taker':
+          document.getElementById('question-input').value = '';
           document.getElementById('room-action-area').setAttribute('style', 'display:block;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
           document.getElementById('end-turn').setAttribute('style', 'display:none;');
@@ -119,7 +127,7 @@
           let list = document.createElement('UL');
           for(i=0;i<myQuestions.length;i++)
           {
-            question.innerHTML = `<strong>Question ${i+1}</strong> ${myQuestions[i]}`;
+            question.innerHTML = `<span class="label-text">Question ${i+1}</span> ${myQuestions[i]}`;
           }
           questionContainer.append(question);
           questionContainer.append(list);
@@ -129,17 +137,18 @@
           document.getElementById('wait-message').setAttribute('style','display:none');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
           let playerName = document.createElement('p');
-          playerName.innerHTML = `<strong>${data.sender.celeb} asks:</strong> ${data.question}`;
+          playerName.innerHTML = `<span class="label-text">${data.sender.celeb} asks:</span> ${data.question}`;
           document.getElementById('question').append(playerName);
           console.log('received a question');
           break;
         case 'reply-received':
           let qList = document.getElementById(`question-${questionCount-1}`).getElementsByTagName('ul')[0];
-          let listItem = document.createElement('LI');
-          listItem.innerHTML = `<strong>${data.sender} says:</strong> ${data.response}`;
+          let listItem = document.createElement('div');
+          listItem.innerHTML = `<span class="label-text">${data.sender} says:</span> ${data.response}`;
           qList.append(listItem);
           if(data.last_response) {
             document.getElementById('end-turn').setAttribute('style', 'display:block;');
+            document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
           }
           break;
         case 'youhavewon':
@@ -152,11 +161,32 @@
           document.getElementById('yesnopanel').setAttribute('style', 'display:none;');
           break;
         case 'player-guess-correct':
+          let playerList = document.getElementById('player-list');
+          printPlayerList(playerList);
           document.getElementById('room-action-area').setAttribute('style', 'display:none;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
-
           document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
+          break;
+        case 'gameover':
+          //Hide everything
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
+          document.getElementById('player-list').setAttribute('style', 'display:none;');
+          document.getElementById('scoreboard').setAttribute('style', 'display:block;');
+          //Populate the scoreboard
+          let scoreList = document.getElementById('player-scores');
+          scoreList.innerHTML = '';
+          //// TODO: Display score panel
+          for(let i=0;i<winners.length;i++) {
+              scoreList.innerHTML += `
+                <div>${i+1}</div>
+                <div>${winners[i].name}</div>
+                <div>${winners[i].celev}</div>
+              `
+          }
       }
   }
 
@@ -173,6 +203,7 @@
 
   //// TODO: Function below
   function endTurn(id) {
+    document.getElementById('end-turn').setAttribute('style','display:none;');
     chatSocket.send(JSON.stringify({
         'end_turn': ''
     }));
@@ -254,14 +285,19 @@
       let playerUL = document.createElement("DIV");
       playerUL.setAttribute('class','row');
       playerUL.setAttribute('id',player.id);
+      let winMarker;
+      player.win ?  winMarker = `<span class="win-text">WIN</span>`: winMarker = '';
       let playerHTML = `
-          <span class="col">
+          <span class="col-5">
             <span class="label-text">Name: </span>
             ${player.name}
           </span>
-          <span class="col celeb">
+          <span class="col-5 celeb">
             <span class="label-text">Famous person name: </span>
             ${player.celeb}
+          </span>
+          <span class="col-2">
+            ${winMarker}
           </span>
       `
       playerUL.innerHTML += playerHTML;
@@ -361,7 +397,9 @@
           break;
         }
         case 'game_over': {
-          console.log('game over',data.payload)
+          console.log('game over',data.payload, players);
+          winners.push(data.payload.looser);
+          roomActionArea('gameover');
           break;
         }
         case 'guess_correct': {
@@ -383,6 +421,7 @@
             //// TODO:  modify the player list to reflect winner
             //Update win to the players table
             winnerFromPlayers = players.find(i => i.id === data.payload.winner.id);
+            winnerFromPlayers.win = true;
             console.log('players',winnerFromPlayers,data.payload.winner.id,players)
             roomActionArea('player-guess-correct');
             //roomActionArea('turn-receiver',null);

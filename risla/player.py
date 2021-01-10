@@ -8,6 +8,7 @@ class Player:
         self.asks = []
         self.room = None
         self.celeb = None
+        self.win = False
 
     def set_name(self,name):
         self.name = name
@@ -51,7 +52,7 @@ class Room:
     #     return [{'name':p.name, 'id':p.id, 'celeb':p.celeb} for p in self.players]
 
     def get_players(self,player):
-        return [{'name':p.name, 'id':p.id, 'celeb':p.celeb} for p in self.players if p != player]
+        return [{'name':p.name, 'id':p.id, 'celeb':p.celeb, 'win':p.win} for p in self.players if p != player]
 
 
     def leave_room(self,player):
