@@ -1,11 +1,15 @@
 {% extends "main.html" %}
 {% block content %}
 
-<p>Game Server</p>
+
 
 <h2 id="welcome"></h2>
 
 <div id='set-name'>
+  <p>Welcome to the name guessing game!</p>
+  <p>Enter a nickname to get started. You will be assigned a random famous person name
+  and the aim of the game is to keep guessing until you find out who you are.</p>
+  <label for="nickname">Enter name: <label>
   <input id="nickname" type="text" />
   <button id="addname" onclick="addName()">Send Name</button>
 </div>
@@ -57,15 +61,16 @@
     </div>
   </div>
 
+  <div id="scoreboard" class="panel" style="display:none;">
+    <h2>Game Over</h2>
+    <div id="player-scores"></div>
+  </div>
 
   <button id="start" onclick="startGame()" style='display:none;'>Start</button>
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
 
-<div id="scoreboard" class="panel" style="display:none;">
-  <h2>Game Over</h2>
-  <div id="player-scores" class="row"></div>
-</div>
+
 
 
 
@@ -178,13 +183,19 @@
           document.getElementById('scoreboard').setAttribute('style', 'display:block;');
           //Populate the scoreboard
           let scoreList = document.getElementById('player-scores');
-          scoreList.innerHTML = '';
-          //// TODO: Display score panel
+          scoreList.innerHTML += `
+            <div class="row">
+              <div class="col-4">Rank</div>
+              <div class="col-4">Name</div>
+              <div class="col-4">Famous Person</div>
+            </div>`
           for(let i=0;i<winners.length;i++) {
               scoreList.innerHTML += `
-                <div>${i+1}</div>
-                <div>${winners[i].name}</div>
-                <div>${winners[i].celev}</div>
+                <div class="row">
+                  <div class="col-4 label-text">${i+1}</div>
+                  <div class="col-4 label-text">${winners[i].name}</div>
+                  <div class="col-4 label-text">${winners[i].celeb}</div>
+                </div>
               `
           }
       }
@@ -398,7 +409,9 @@
         }
         case 'game_over': {
           console.log('game over',data.payload, players);
+          winners = data.payload.winners;
           winners.push(data.payload.looser);
+          console.log('WINNERS HERE', winners, data.payload)
           roomActionArea('gameover');
           break;
         }

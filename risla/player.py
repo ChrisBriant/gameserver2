@@ -37,6 +37,8 @@ class Room:
         self.owner = owner
         self.players = [owner]
         self.winners = []
+        self.gameover = False
+        self.locked = False
 
     def add_player(self,player):
         if player.room:

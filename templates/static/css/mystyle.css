@@ -15,7 +15,7 @@
 html,
 body {
   margin: 0;
-  background-color: #fff;
+  background-color: #e8eae6;
   color:#212121;
   font-family: 'Roboto Condensed', sans-serif;
   font-size: 22px;
@@ -25,8 +25,13 @@ body {
 }
 
 header {
-  min-height: 100vh;
-  padding: 2%;
+  min-height: 2vh;
+  padding: 2px;
+  background-color: #7c9473;
+}
+
+header > p {
+  color: #e8eae6;
 }
 
 section {
@@ -40,6 +45,17 @@ footer {
   background-color: #D5B895;
   text-align: center;
   padding-top: 20px;
+}
+
+button {
+  border-radius: 15px;
+  padding: 4px;
+  border : 0;
+  background-color: #475442;
+  /* background-color: #7c9473; */
+  /* color: #212121; */
+  color: #fff;
+  margin : 4px;
 }
 
 

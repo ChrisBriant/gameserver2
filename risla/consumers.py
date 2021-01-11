@@ -147,38 +147,42 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         if 'joinroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(text_data_json['joinroom'])
-            try:
-                room.add_player(player)
-                await self.room_join(room)
-                await self.channel_layer.group_add(
-                    room.name,
-                    self.channel_name
-                )
-                await self.send_room(room,'list_players')
-            except Exception as e:
-                print(e)
-                data = {
-                    'action' : 'room_join',
-                    'payload' : {
-                        'success': False,
-                        'message':str(e)
+            if not room.locked:
+                try:
+                    room.add_player(player)
+                    await self.room_join(room)
+                    await self.channel_layer.group_add(
+                        room.name,
+                        self.channel_name
+                    )
+                    await self.send_room(room,'list_players')
+                except Exception as e:
+                    print(e)
+                    data = {
+                        'action' : 'room_join',
+                        'payload' : {
+                            'success': False,
+                            'message':str(e)
+                        }
                     }
-                }
-                await self.send(text_data=json.dumps(data))
+                    await self.send(text_data=json.dumps(data))
+            else:
+                print('ROOM LOCKED')
         if 'leaveroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             player.win = False
             room = rooms.get_room(text_data_json['leaveroom'])
-            players_left = room.leave_room(player)
-            #Destroy if empty, if not send the list of players
-            if players_left < 1:
-                rooms.remove_room(room.name)
-                await self.channel_layer.group_discard(
-                    room.name,
-                    self.channel_name
-                )
-            else:
-                await self.send_room(room,'list_players')
+            if room:
+                players_left = room.leave_room(player)
+                #Destroy if empty, if not send the list of players
+                if players_left < 1:
+                    rooms.remove_room(room.name)
+                    await self.channel_layer.group_discard(
+                        room.name,
+                        self.channel_name
+                    )
+                else:
+                    await self.send_room(room,'list_players')
             await self.channel_layer.group_send(
                 'all_users',
                 {
@@ -189,13 +193,14 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 'action' : 'room_leave',
                 'payload' : {
                     'success': True,
-                    'room' : room.name,
+                    #'room' : room.name,
                 }
             }
             await self.send(text_data=json.dumps(data))
         if 'start_game' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(player.room)
+            room.locked = True
             game = {
                 'current_round' : 1,
                 'current_player' : player.id,
@@ -322,14 +327,15 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         player.win=True
         #If there is only one remaining player then the game is over
         if(len(game['players_left']) == 1):
-             await self.channel_layer.group_send(
-                 room.name,
-                 {
-                     'type': 'game_over',
-                     'winners': room.winners,
-                     'looser' : game['players_left'][0]
-                 }
-             )
+            room.gameover = True
+            await self.channel_layer.group_send(
+             room.name,
+             {
+                 'type': 'game_over',
+                 'winners': room.winners,
+                 'looser' : game['players_left'][0]
+             }
+            )
         else:
             game['current_player'] = game['players_left'][0]['id']
             game['await_response'] = True
@@ -413,14 +419,16 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         player = players.get_player(self.scope['session']['id'])
         room = rooms.get_room(event['data'])
         room_members = room.get_players(player)
-
-        await self.send(text_data=json.dumps({
-            'action': 'room_list_players',
-            'payload' : {
-                'players' : room_members,
-                'owner' : room.owner.id
-            }
-        }))
+        print('ROOMEO oh ROOMEO', room.__dict__)
+        if not room.gameover:
+            print('Mr McRoom')
+            await self.send(text_data=json.dumps({
+                'action': 'room_list_players',
+                'payload' : {
+                    'players' : room_members,
+                    'owner' : room.owner.id
+                }
+            }))
 
 
     async def send_question(self,event):
