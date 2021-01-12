@@ -3,7 +3,7 @@
 
 
 
-<h2 id="welcome"></h2>
+<h3 id="welcome"></h3>
 
 <div id='set-name'>
   <p>Welcome to the name guessing game!</p>
@@ -16,15 +16,19 @@
 
 <div id="room-setup">
   <div id='set-room' style='display:none;'>
+    <label for="roomname">Create Room: <label>
     <input id="roomname" type="text" />
     <button id="createroom" onclick="createRoom()">Create Room</button>
   </div>
 </div>
 
-<div id='room-list' style='display:none;'></div>
+<div id="room-panel" class = 'panel' style='display:none;'>
+  <h4>Rooms</h4>
+  <div id='room-list' ></div>
+</div>
 
 <div id="room" style="display:none;">
-  <h2 id="room-name""></h2>
+  <h4 id="room-name""></h4>
 
   <div id="youhavewon" style='display:none;'>
     <h1>Congratulations! You have guessed correctly.</h1>
@@ -66,7 +70,13 @@
     <div id="player-scores"></div>
   </div>
 
-  <button id="start" onclick="startGame()" style='display:none;'>Start</button>
+  <div id='start' class='panel'>
+    <div class='panel-inner-center'>
+      <p id="start-text"></p>
+      <button id="start-btn" onclick="startGame()">Start New Game</button>
+    </div>
+  </div>
+
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
 
@@ -263,7 +273,10 @@
     }));
   }
 
-  function joinRoom(room) {
+
+
+  function joinRoom(e,room) {
+    console.log(e);
     chatSocket.send(JSON.stringify({
         'joinroom': room
     }));
@@ -271,20 +284,29 @@
 
   function printRoomList(rooms, roomList) {
     roomList.innerHTML = '';
-    let roomUL = document.createElement("UL");
+    roomList.innerHTML += `
+            <div class="row">
+              <div class="col-3">Room Name</div>
+              <div class="col-3">Players</div>
+              <div class="col-3"></div>
+            </div>`
+    let roomUL = document.createElement('DIV');
+    roomUL.setAttribute('class','row');
     for (let room of rooms) {
-      console.log('here is the room',room);
+      //<div class="col-3"><a href="#" class="join-btn" onclick="joinRoom('${room.name}')">Join</a></div>
       let roomHTML = `
-        <li>
-          <p class="title">
-            ${room}
-            <button class="join-btn" onclick="joinRoom('${room}')">Join</button>
-          </p>
-        </li>
+        <div class="col-3"><p class="title">${room.name}</p></div>
+        <div class="col-3"><p class="title">${room.playercount}</p></div>
+        <div class="col-3"><a href="#" class="join-btn" onclick="joinRoom(this,'${room.name}')">Join</a></div>
       `
       roomUL.innerHTML += roomHTML;
     }
     roomList.appendChild(roomUL);
+    //Add the listener - DOESN'T WORK
+    // document.querySelector('.join-btn').addEventListener("click", function(event) {
+    //   event.preventDefault();
+    //   console.log(event);
+    // }, false);
   }
 
 
@@ -333,6 +355,7 @@
             let setRoom = document.getElementById('set-room');
             setName.setAttribute('style', 'display:none;');
             setRoom.setAttribute('style', 'display:block;');
+            document.getElementById('room-panel').setAttribute('style', 'display:block;');
             roomList.setAttribute('style', 'display:block;');
             document.getElementById('welcome').innerHTML = `Welcome ${data.payload.name}`;
           }
@@ -346,8 +369,9 @@
         case 'room_join':
           console.log('join here',data.payload);
           if(data.payload.success) {
-            document.getElementById('room-name').innerHTML = data.payload.room;
+            document.getElementById('room-name').innerHTML =`You are in room ${data.payload.room}`;
             document.getElementById('room-setup').setAttribute('style', 'display:none;');
+            document.getElementById('room-panel').setAttribute('style', 'display:none;');
             document.getElementById('room-list').setAttribute('style', 'display:none;');
             document.getElementById('room').setAttribute('style', 'display:block;');
             //console.log(data.payload.players);
@@ -373,9 +397,14 @@
             playerList.setAttribute('style','display:block;');
           }
           printPlayerList(playerList);
-          console.log('owner and me', data.payload.owner,playerId)
-          if (playerId === data.payload.owner) {
+          console.log('owner and me', data.payload.owner,playerId,data.payload.players.length)
+          if (playerId === data.payload.owner && data.payload.players.length > 0) {
+            document.getElementById('start-text').innerHTML = 'Click below to start a new game';
+            document.getElementById('start-btn').setAttribute('style', 'display:inline-block;');
             document.getElementById('start').setAttribute('style', 'display:block;');
+          } else if (playerId === data.payload.owner && data.payload.players.length === 0) {
+            document.getElementById('start-text').innerHTML = 'Waiting for other players to join';
+            document.getElementById('start-btn').setAttribute('style', 'display:none;');
           } else {
             document.getElementById('start').setAttribute('style', 'display:none;');
           }

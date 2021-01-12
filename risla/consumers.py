@@ -386,7 +386,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             'action': 'room_list',
             'payload': {
                 'success': True,
-                'rooms':[r.name for r in rooms.rooms]
+                'rooms':[ {'name' : r.name, 'playercount' : len(r.players) + 1 } for r in rooms.rooms]
             }
         }))
 

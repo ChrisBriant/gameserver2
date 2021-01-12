@@ -15,6 +15,7 @@ class ChatTests(ChannelsLiveServerTestCase):
         try:
             # NOTE: Requires "chromedriver" binary to be installed in $PATH
             cls.driver = webdriver.Chrome()
+            pass
 
         except:
             super().tearDownClass()
@@ -36,6 +37,7 @@ class ChatTests(ChannelsLiveServerTestCase):
 
     def _open_new_window(self):
         #Open three tabs and add a name for each
+        #self.driver = webdriver.chrome()
         for i in range(0,3):
             self.driver.execute_script('window.open("");')
             self.driver.switch_to_window(self.driver.window_handles[-1])
@@ -97,3 +99,25 @@ class ChatTests(ChannelsLiveServerTestCase):
         self.driver.switch_to_window(self.driver.window_handles[3])
         self.driver.find_element_by_id('question-input').send_keys(nameguess)
         self.driver.find_element_by_id('send-question').click()
+
+    def test_rooms(self):
+        try:
+            for i in range(0,4):
+                self.driver.execute_script('window.open("");')
+                self.driver.switch_to_window(self.driver.window_handles[-1])
+                self.driver.get('http://localhost:8000/risla')
+                self.driver.find_element_by_id("nickname").send_keys(chr(i+65))
+                self.driver.find_element_by_id("addname").click()
+            #Create a room
+            self.driver.switch_to_window(self.driver.window_handles[1])
+            letters = string.ascii_letters
+            roomname = ''.join(random.choice(letters) for i in range(6))
+            self.driver.find_element_by_id("roomname").send_keys(roomname)
+            self.driver.find_element_by_id("createroom").click()
+            #Another player joins
+            self.driver.switch_to_window(self.driver.window_handles[2])
+            join = self.driver.find_element_by_class_name('join-btn')
+            join.click()
+        finally:
+            pass
+            #self._close_all_new_windows()
