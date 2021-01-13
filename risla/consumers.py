@@ -59,16 +59,19 @@ class PlayerConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         # Leave room group
-        print("Disconnecting", self.scope['session']['id'])
+        disconnect_id = self.scope['session']['id']
+        print("Disconnecting", disconnect_id)
         #Remove the disconnected player
-        player = players.get_player(self.scope['session']['id'])
+        player = players.get_player(disconnect_id)
         players.remove_player(player.id)
         room = rooms.get_room(player.room)
         if room:
             #Sending messages on disconnect doesn't seem to work
-            print('Players', players.players)
-            print('Player Count', len(players.players))
+            #Remove all references to disconnected player from room
             players_left = room.leave_room(player)
+            room.game['players_left'] = room.get_players(player)
+            room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
+            room.game.pop(disconnect_id, None)
             if players_left < 1:
                 rooms.remove_room(room.name)
                 await self.channel_layer.group_send(
@@ -201,6 +204,14 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             player = players.get_player(self.scope['session']['id'])
             room = rooms.get_room(player.room)
             room.locked = True
+            #Notify change to rooms
+            await self.channel_layer.group_send(
+                'all_users',
+                {
+                    'type': 'room_list',
+                }
+            )
+
             game = {
                 'current_round' : 1,
                 'current_player' : player.id,
@@ -386,7 +397,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             'action': 'room_list',
             'payload': {
                 'success': True,
-                'rooms':[ {'name' : r.name, 'playercount' : len(r.players) + 1 } for r in rooms.rooms]
+                'rooms':[ {'name' : r.name, 'playercount' : len(r.players), 'locked' : r.locked } for r in rooms.rooms]
             }
         }))
 

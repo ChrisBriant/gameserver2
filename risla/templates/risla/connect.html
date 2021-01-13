@@ -45,7 +45,7 @@
     </div>
     <div id='end-turn' class="sub-area" style='display:none;'>
       <span>All responses received
-        <button id="end-turn-btn" class="btn" type="button" onclick="endTurn()">End Turn</button>
+        <button id="end-turn-btn" type="button" onclick="endTurn()">End Turn</button>
       </span>
     </div>
     <div id="sender-action-panel" class="sub-area" style="display:none;">
@@ -288,16 +288,23 @@
             <div class="row">
               <div class="col-3">Room Name</div>
               <div class="col-3">Players</div>
-              <div class="col-3"></div>
+              <div class="col-3">Status</div>
+              <div class="col-3">Click to join</div>
             </div>`
     let roomUL = document.createElement('DIV');
-    roomUL.setAttribute('class','row');
+    //roomUL.setAttribute('class','row');
     for (let room of rooms) {
       //<div class="col-3"><a href="#" class="join-btn" onclick="joinRoom('${room.name}')">Join</a></div>
       let roomHTML = `
-        <div class="col-3"><p class="title">${room.name}</p></div>
-        <div class="col-3"><p class="title">${room.playercount}</p></div>
-        <div class="col-3"><a href="#" class="join-btn" onclick="joinRoom(this,'${room.name}')">Join</a></div>
+        <div class="row">
+          <div class="col-3"><p class="title label-text">${room.name}</p></div>
+          <div class="col-3"><p class="title label-text">${room.playercount}</p></div>
+          <div class="col-3"><p class="title label-text">${room.locked ? 'Game in Progress' : 'Open'}</p></div>
+          ${room.locked
+            ? `<div class="col-3"></div>`
+            : `<div class="col-3"><a href="#" class="join-btn" onclick="joinRoom(this,'${room.name}')">Join</a></div>`
+          }
+        </div>
       `
       roomUL.innerHTML += roomHTML;
     }
@@ -397,6 +404,7 @@
             playerList.setAttribute('style','display:block;');
           }
           printPlayerList(playerList);
+          //// TODO: Need some sort of marker in the payload to stop condition below if in existing game
           console.log('owner and me', data.payload.owner,playerId,data.payload.players.length)
           if (playerId === data.payload.owner && data.payload.players.length > 0) {
             document.getElementById('start-text').innerHTML = 'Click below to start a new game';
@@ -411,10 +419,11 @@
           break;
         }
         case 'init_game': {
+          document.getElementById('start').setAttribute('style', 'display:none;');
           console.log('init_game',data.payload);
           if (data.payload.owner_id === data.payload.player_id) {
             roomActionArea('turn-taker',null);
-            document.getElementById('start').setAttribute('style', 'display:none;');
+
           } else {
             roomActionArea('turn-receiver',null);
           }
