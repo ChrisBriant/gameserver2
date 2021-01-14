@@ -72,7 +72,13 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             room.game['players_left'] = room.get_players(player)
             room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
             room.game.pop(disconnect_id, None)
-            if players_left < 1:
+            if players_left == 1:
+                await self.channel_layer.group_send(
+                    room.name,
+                    {
+                        'type': 'all_disconnect'
+                    }
+                )
                 rooms.remove_room(room.name)
                 await self.channel_layer.group_send(
                     'all_users',
@@ -85,6 +91,16 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                     self.channel_name
                 )
             else:
+                if room.game['current_player'] == disconnect_id:
+                    room.game['current_player'] = room.game['turns'][0]['id']
+                await self.channel_layer.group_send(
+                    room.name,
+                    {
+                        'type': 'init_game',
+                        'owner': room.game['current_player']
+                    }
+                )
+                print('THE GAME IS', room.game, room.owner.id)
                 print("NOT REMOVING")
                 await self.send_room(room,'list_players')
 
@@ -430,7 +446,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         player = players.get_player(self.scope['session']['id'])
         room = rooms.get_room(event['data'])
         room_members = room.get_players(player)
-        print('ROOMEO oh ROOMEO', room.__dict__)
+        #print('ROOMEO oh ROOMEO', room.__dict__)
         if not room.gameover:
             print('Mr McRoom')
             await self.send(text_data=json.dumps({
@@ -481,6 +497,24 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 'next_player' : event['next_player']
             }
         }))
+
+
+    async def all_disconnect(self,event):
+        await self.send(text_data=json.dumps({
+            'action': 'all_disconnect',
+            'payload' : {
+                'all_disconnect' :  'all_disconnect',
+            }
+        }))
+
+    # async def room_test(self,event):
+    #     print("thsi is a room test")
+    #     await self.send(text_data=json.dumps({
+    #         'action': 'room_test',
+    #         'payload' : {
+    #             'roomtest' :  'This is a room test',
+    #         }
+    #     }))
 
 
 # class RoomConsumer(AsyncWebsocketConsumer):
