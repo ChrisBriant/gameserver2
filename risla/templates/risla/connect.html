@@ -70,6 +70,10 @@
     <div id="player-scores"></div>
   </div>
 
+  <div id="disconnectpanel" class="panel" style="display:none;">
+    <h2>All Players Have Disconnected</h2>
+  </div>
+
   <div id='start' class='panel'>
     <div class='panel-inner-center'>
       <p id="start-text"></p>
@@ -80,12 +84,10 @@
   <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
 
-
-
-
-
 <div id="winnerpanel">
 </div>
+
+
 
 
 
@@ -208,6 +210,14 @@
                 </div>
               `
           }
+          break;
+        case 'all-disconnected':
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
+          document.getElementById('player-list').setAttribute('style', 'display:none;');
+          document.getElementById('disconnectpanel').setAttribute('style', 'display:block;');
       }
   }
 
@@ -393,6 +403,7 @@
             document.getElementById('room-setup').setAttribute('style', 'display:block;');
             document.getElementById('room-list').setAttribute('style', 'display:block;');
             document.getElementById('room').setAttribute('style', 'display:none;');
+            document.getElementById('disconnectpanel').setAttribute('style', 'display:none;');
             //window.location.pathname = `/risla/${data.payload.room}/`;
           }
           break;
@@ -486,6 +497,11 @@
             document.getElementById('wait-message').setAttribute('style','display:none');
             roomActionArea('turn-receiver');
           }
+          break;
+        }
+        case 'all_disconnect': {
+          //Everyone has disconnected
+          roomActionArea('all-disconnected', null);
           break;
         }
         default:
