@@ -56,6 +56,60 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(data))
 
 
+    async def leave_room_procedure(self,room,player):
+        #Sending messages on disconnect doesn't seem to work
+        #Remove all references to disconnected player from room
+        disconnect_id = self.scope['session']['id']
+        players_left = room.leave_room(player)
+        if room.game:
+            room.game['players_left'] = room.get_players(player)
+            room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
+            room.game.pop(disconnect_id, None)
+            if players_left == 1:
+                await self.channel_layer.group_send(
+                    room.name,
+                    {
+                        'type': 'all_disconnect'
+                    }
+                )
+                rooms.remove_room(room.name)
+                await self.channel_layer.group_send(
+                    'all_users',
+                    {
+                        'type': 'room_list',
+                    }
+                )
+                await self.channel_layer.group_discard(
+                    room.name,
+                    self.channel_name
+                )
+            else:
+                if room.game['current_player'] == disconnect_id:
+                    room.game['current_player'] = room.game['turns'][0]['id']
+                await self.channel_layer.group_send(
+                    room.name,
+                    {
+                        'type': 'init_game',
+                        'owner': room.game['current_player']
+                    }
+                )
+                print('THE GAME IS', room.game, room.owner.id)
+                print("NOT REMOVING")
+                await self.send_room(room,'list_players')
+        else:
+            if players_left == 1:
+                rooms.remove_room(room.name)
+                await self.channel_layer.group_send(
+                    'all_users',
+                    {
+                        'type': 'room_list',
+                    }
+                )
+                await self.channel_layer.group_discard(
+                    room.name,
+                    self.channel_name
+                )
+
 
     async def disconnect(self, close_code):
         # Leave room group
@@ -68,8 +122,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         if room:
             #Sending messages on disconnect doesn't seem to work
             #Remove all references to disconnected player from room
-            players_left = room.leave_room(player)#
-            print('WHAT?', room.game)
+            players_left = room.leave_room(player)
             if room.game:
                 room.game['players_left'] = room.get_players(player)
                 room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
@@ -207,22 +260,23 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             player.win = False
             room = rooms.get_room(text_data_json['leaveroom'])
             if room:
-                players_left = room.leave_room(player)
-                #Destroy if empty, if not send the list of players
-                if players_left < 1:
-                    rooms.remove_room(room.name)
-                    await self.channel_layer.group_discard(
-                        room.name,
-                        self.channel_name
-                    )
-                else:
-                    await self.send_room(room,'list_players')
-            await self.channel_layer.group_send(
-                'all_users',
-                {
-                    'type': 'room_list',
-                }
-            )
+                await self.leave_room_procedure(room,player)
+            #     players_left = room.leave_room(player)
+            #     #Destroy if empty, if not send the list of players
+            #     if players_left < 1:
+            #         rooms.remove_room(room.name)
+            #         await self.channel_layer.group_discard(
+            #             room.name,
+            #             self.channel_name
+            #         )
+            #     else:
+            #         await self.send_room(room,'list_players')
+            # await self.channel_layer.group_send(
+            #     'all_users',
+            #     {
+            #         'type': 'room_list',
+            #     }
+            # )
             data = {
                 'action' : 'room_leave',
                 'payload' : {
