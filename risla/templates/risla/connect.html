@@ -48,13 +48,28 @@
         <button id="end-turn-btn" type="button" onclick="endTurn()">End Turn</button>
       </span>
     </div>
-    <div id="sender-action-panel" class="sub-area" style="display:none;">
-      <p>Select from one of the suggested questions below or type a question.
-        Questions must be questions that can be answered with either yes or no.</p>
-      <textarea id="question-input" rows="4" cols="80"></textarea>
-      <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
+    <div  class="row">
+      <div class="col-8">
+        <div id="sender-action-panel" class="sub-area" style="display:none;">
+          <p>Enter a question below</p>
+          <p>Questions must be questions that can be answered with either yes or no. When you
+          have guessed who you are enter the name of the famous person to see if you have won!</p>
+          <textarea id="question-input" class="form-control" rows="4" cols="80"></textarea>
+          <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
+        </div>
+      </div>
+      <div id='predefined-question-panel' class="col-4" style="display:none;">
+        <p>OR select from one of the questions below:</p>
+        <ul id="predefined-question-list">
+          <li>Am I male or female?</li>
+          <li>Am I dead or alive?</li>
+          <li>Am I old or young?</li>
+          <li>Am I tall or short?</li>
+          <li>Am I from England?</li>
+        </ul>
+      </div>
     </div>
-    <h3 id="wait-message"></h3>
+    <h4 id="wait-message"></h4>
     <div id="receiver-action-panel" class="sub-area" style="display:none;">
       <p>User Responses</p>
       <div id="question"></div>
@@ -113,6 +128,14 @@
       `ws://${window.location.host}/ws/risla/`
   );
 
+  document.getElementById("predefined-question-list").addEventListener("click",function(e) {
+    document.getElementById('question-input').value = e.target.innerHTML;
+  });
+
+  // function addQuestionToInput(e) {
+  //   console.log('Clicked Question',e.innerHTML);
+  //   document.getElementById('question-input').value = e.innerHTML;
+  // }
 
 
   //Handles the displaying / hiding of the room action area
@@ -122,12 +145,14 @@
           document.getElementById('question-input').value = '';
           document.getElementById('room-action-area').setAttribute('style', 'display:block;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:block;');
           document.getElementById('end-turn').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           break;
         case 'turn-receiver':
           document.getElementById('room-action-area').setAttribute('style', 'display:block;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
           document.getElementById('wait-message').innerHTML = "Waiting for Response";
           //console.log('why am i here?');
           //document.getElementById('wait-message').setAttribute('style','display:block;');
@@ -166,11 +191,13 @@
           if(data.last_response) {
             document.getElementById('end-turn').setAttribute('style', 'display:block;');
             document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+            document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
           }
           break;
         case 'youhavewon':
           document.getElementById('room-action-area').setAttribute('style', 'display:none;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
 
           document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
@@ -182,6 +209,7 @@
           printPlayerList(playerList);
           document.getElementById('room-action-area').setAttribute('style', 'display:none;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
           break;
@@ -189,6 +217,7 @@
           //Hide everything
           document.getElementById('room-action-area').setAttribute('style', 'display:none;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
           document.getElementById('player-list').setAttribute('style', 'display:none;');
@@ -214,6 +243,7 @@
         case 'all-disconnected':
           document.getElementById('room-action-area').setAttribute('style', 'display:none;');
           document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predifined-question-panel').setAttribute('style', 'display:none;');
           document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
           document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
           document.getElementById('player-list').setAttribute('style', 'display:none;');

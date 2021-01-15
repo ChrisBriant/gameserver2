@@ -387,3 +387,16 @@ class ChatTests(ChannelsLiveServerTestCase):
             self.driver.find_element_by_id("nickname").send_keys(chr(i+65))
             self.driver.find_element_by_id("addname").click()
         self.driver.switch_to_window(self.driver.window_handles[1])
+        letters = string.ascii_letters
+        roomname = ''.join(random.choice(letters) for i in range(6))
+        self.driver.find_element_by_id("roomname").send_keys(roomname)
+        self.driver.find_element_by_id("createroom").click()
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        join = self.driver.find_element_by_class_name('join-btn')
+        join.click()
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        join = self.driver.find_element_by_class_name('join-btn')
+        join.click()
+        #Start Game
+        self.driver.switch_to_window(self.driver.window_handles[1])
+        self.driver.find_element_by_id('start').click()
