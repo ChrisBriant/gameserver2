@@ -258,6 +258,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         if 'leaveroom' in text_data_json.keys():
             player = players.get_player(self.scope['session']['id'])
             player.win = False
+            player.room = None
             room = rooms.get_room(text_data_json['leaveroom'])
             if room:
                 await self.leave_room_procedure(room,player)

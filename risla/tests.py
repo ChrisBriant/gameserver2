@@ -400,3 +400,33 @@ class ChatTests(ChannelsLiveServerTestCase):
         #Start Game
         self.driver.switch_to_window(self.driver.window_handles[1])
         self.driver.find_element_by_id('start').click()
+
+
+    def test_play_game_start_new(self):
+        #Test what happens when a game is played and then two players set up a new room
+        # and play a new game
+        self.test_game()
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('leaveeroom').click()
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('leaveeroom').click()
+        letters = string.ascii_letters
+        roomname = ''.join(random.choice(letters) for i in range(6))
+        self.driver.find_element_by_id("roomname").send_keys(roomname)
+        self.driver.find_element_by_id("createroom").click()
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        join = self.driver.find_element_by_class_name('join-btn')
+        join.click()
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('start').click()
+        self.driver.find_element_by_id('question-input').send_keys('Is this really happening?')
+        self.driver.find_element_by_id('send-question').click()
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('yes').click()
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('end-turn-btn').click()
+        self.driver.switch_to_window(self.driver.window_handles[3])
+        self.driver.find_element_by_id('question-input').send_keys('Helloooo mr hello?')
+        self.driver.find_element_by_id('send-question').click()
+        self.driver.switch_to_window(self.driver.window_handles[2])
+        self.driver.find_element_by_id('no').click()
