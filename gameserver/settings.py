@@ -26,7 +26,7 @@ SECRET_KEY = 'm@45$18uym9p3a7iy4ae95p7-9kl3c(kr_5vox@eipz%=d*ya%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['0.0.0.0', '192.168.56.101', 'gameserver','localhost','127.0.0.1']
 
 
 # Application definition
@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'channels',
     'chat',
     'risla',
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -130,6 +131,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "templates/static"),
 ]
 
+#THIS FIXED A REDIS ISSUE
+#https://stackoverflow.com/questions/41371402/connecting-to-redis-running-in-docker-container-from-host-machine
 
 # Channels
 ASGI_APPLICATION = 'gameserver.asgi.application'

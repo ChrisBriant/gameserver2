@@ -20,17 +20,18 @@ class PersonManager(models.Manager):
         return self.all()[random_index]
 
 class Person(models.Model):
-    slug = models.CharField(max_length=75,null=False)
+    slug = models.CharField(max_length=75,null=True)
     name = models.CharField(max_length=75,null=False)
-    occupation = models.CharField(max_length=50)
-    bplace_country = models.CharField(max_length=50)
+    occupation = models.CharField(max_length=50, null=True)
+    bplace_country = models.CharField(max_length=50, null=True)
     birthdate = models.DateTimeField(null=True)
     birthyear = models.IntegerField(null=True)
-    dplace_name = models.CharField(max_length=50)
-    dplace_country = models.CharField(max_length=50)
+    dplace_name = models.CharField(max_length=50,null=True)
+    dplace_country = models.CharField(max_length=50,null=True)
     deathdate = models.DateTimeField(null=True)
     age = models.IntegerField(null=True)
     random_objects = PersonManager()
+    objects=models.Manager()
 
 
 class Question(models.Model):

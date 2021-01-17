@@ -125,7 +125,7 @@
   //let currentRoomMembers = [];
 
   const chatSocket = new WebSocket(
-      `ws://${window.location.host}/ws/risla/`
+      `ws://${window.location.host}:8001/ws/risla/`
   );
 
   document.getElementById("predefined-question-list").addEventListener("click",function(e) {

@@ -1,0 +1,14 @@
+[Unit]
+Description=daphne server script  
+After=network.target
+
+[Service]
+User=django
+Group=www-data
+Environment=DJANGO_SETTINGS_MODULE=gameserver.settings
+WorkingDirectory=/home/chris/Documents/django/gameserver2
+ExecStart= /home/chris/Documents/django/environments/gameserver/bin/daphne -u /home/chris/Documents/django/gameserver2/daphne.sock -b 0.0.0.0 -p 8001 gameserver.asgi:application
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

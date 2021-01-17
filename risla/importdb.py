@@ -45,3 +45,23 @@ def importdb(wipe=False):
             )
         except Exception as e:
             print('error')
+
+
+#Using a different source which might be better
+def importdb2(wipe=False):
+    if wipe:
+        people = Person.objects.all()
+        for person in people:
+            person.delete()
+
+    import_data = pd.read_csv('./people.csv',error_bad_lines=False)
+
+    for i in range(len(import_data)):
+        name = import_data.loc[i,'name']
+        print(name)
+        try:
+            Person.objects.create(
+                name = import_data.loc[i,'name']
+            )
+        except Exception as e:
+            print('error', e)
