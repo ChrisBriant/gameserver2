@@ -1,30 +1,108 @@
 {% extends "main.html" %}
 {% block content %}
 
-<p>Game Server</p>
 
-<h2 id="welcome"></h2>
+
+<h3 id="welcome"></h3>
 
 <div id='set-name'>
+  <p>Welcome to the name guessing game!</p>
+  <p>Enter a nickname to get started. You will be assigned a random famous person name
+  and the aim of the game is to keep guessing until you find out who you are.</p>
+  <label for="nickname">Enter name: <label>
   <input id="nickname" type="text" />
   <button id="addname" onclick="addName()">Send Name</button>
 </div>
 
 <div id="room-setup">
   <div id='set-room' style='display:none;'>
+    <label for="roomname">Create Room: <label>
     <input id="roomname" type="text" />
     <button id="createroom" onclick="createRoom()">Create Room</button>
   </div>
 </div>
 
-<div id='room-list' style='display:none;'></div>
+<div id="room-panel" class = 'panel' style='display:none;'>
+  <h4>Rooms</h4>
+  <div id='room-list' ></div>
+</div>
 
 <div id="room" style="display:none;">
-  <h2 id="room-name""></h2>
+  <h4 id="room-name""></h4>
 
-  <div id="player-list"></div>
-  <button id="createroom" onclick="leaveRoom()">Leave</button>
+  <div id="youhavewon" style='display:none;'>
+    <h1>Congratulations! You have guessed correctly.</h1>
+  </div>
+
+  <div id="player-list" class="panel" style="display:none;">
+    <h3>Players in this Room</h2>
+    <!-- <div  class="row"></div> -->
+  </div>
+
+  <div id="room-action-area" class="panel" style="display:none;">
+    <div id="question-history" class="sub-area" style="display:none;">
+          <h4>My Questions</h4>
+    </div>
+    <div id='end-turn' class="sub-area" style='display:none;'>
+      <span>All responses received
+        <button id="end-turn-btn" type="button" onclick="endTurn()">End Turn</button>
+      </span>
+    </div>
+    <div  class="row">
+      <div class="col-8">
+        <div id="sender-action-panel" class="sub-area" style="display:none;">
+          <p>Enter a question below</p>
+          <p>Questions must be questions that can be answered with either yes or no. When you
+          have guessed who you are enter the name of the famous person to see if you have won!</p>
+          <textarea id="question-input" class="form-control" rows="4" cols="80"></textarea>
+          <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
+        </div>
+      </div>
+      <div id='predefined-question-panel' class="col-4" style="display:none;">
+        <p>OR select from one of the questions below:</p>
+        <ul id="predefined-question-list">
+          <li>Am I male or female?</li>
+          <li>Am I dead or alive?</li>
+          <li>Am I old or young?</li>
+          <li>Am I tall or short?</li>
+          <li>Am I from England?</li>
+        </ul>
+      </div>
+    </div>
+    <h4 id="wait-message"></h4>
+    <div id="receiver-action-panel" class="sub-area" style="display:none;">
+      <p>User Responses</p>
+      <div id="question"></div>
+      <div id="yesnopanel">
+        <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
+        <button id='no' type='button' onclick="sendYesNo(this.id)">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="scoreboard" class="panel" style="display:none;">
+    <h2>Game Over</h2>
+    <div id="player-scores"></div>
+  </div>
+
+  <div id="disconnectpanel" class="panel" style="display:none;">
+    <h2>All Players Have Disconnected</h2>
+  </div>
+
+  <div id='start' class='panel'>
+    <div class='panel-inner-center'>
+      <p id="start-text"></p>
+      <button id="start-btn" onclick="startGame()">Start New Game</button>
+    </div>
+  </div>
+
+  <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
 </div>
+
+<div id="winnerpanel">
+</div>
+
+
 
 
 
@@ -37,10 +115,180 @@
   // );
 
   let currentRoom = '';
+  let playerId;
+  let questionCount = 0;
+  let myQuestions = [];
+  let winners = [];
+  let won = false;
+  let players = [];
+  //let responsesReceived = [];
+  //let currentRoomMembers = [];
 
   const chatSocket = new WebSocket(
       `ws://${window.location.host}/ws/risla/`
   );
+
+  document.getElementById("predefined-question-list").addEventListener("click",function(e) {
+    document.getElementById('question-input').value = e.target.innerHTML;
+  });
+
+  // function addQuestionToInput(e) {
+  //   console.log('Clicked Question',e.innerHTML);
+  //   document.getElementById('question-input').value = e.innerHTML;
+  // }
+
+
+  //Handles the displaying / hiding of the room action area
+  function roomActionArea(event,data) {
+      switch (event) {
+        case 'turn-taker':
+          document.getElementById('question-input').value = '';
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:block;');
+          document.getElementById('end-turn').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          break;
+        case 'turn-receiver':
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
+          document.getElementById('wait-message').innerHTML = "Waiting for Response";
+          //console.log('why am i here?');
+          //document.getElementById('wait-message').setAttribute('style','display:block;');
+          break;
+        case 'question-sent':
+          console.log('sent a question',myQuestions);
+          if(myQuestions.length > 0) {
+            document.getElementById('question-history').setAttribute('style','display:block;');
+          }
+          let questionContainer = document.createElement('DIV');
+          questionContainer.setAttribute('id',`question-${questionCount}`);
+          questionCount++;
+          let question = document.createElement('P');
+          let list = document.createElement('UL');
+          for(i=0;i<myQuestions.length;i++)
+          {
+            question.innerHTML = `<span class="label-text">Question ${i+1}</span> ${myQuestions[i]}`;
+          }
+          questionContainer.append(question);
+          questionContainer.append(list);
+          document.getElementById('question-history').append(questionContainer);
+          break;
+        case 'question-received':
+          document.getElementById('wait-message').setAttribute('style','display:none');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
+          let playerName = document.createElement('p');
+          playerName.innerHTML = `<span class="label-text">${data.sender.celeb} asks:</span> ${data.question}`;
+          document.getElementById('question').append(playerName);
+          console.log('received a question');
+          break;
+        case 'reply-received':
+          let qList = document.getElementById(`question-${questionCount-1}`).getElementsByTagName('ul')[0];
+          let listItem = document.createElement('div');
+          listItem.innerHTML = `<span class="label-text">${data.sender} says:</span> ${data.response}`;
+          qList.append(listItem);
+          if(data.last_response) {
+            document.getElementById('end-turn').setAttribute('style', 'display:block;');
+            document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+            document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
+          }
+          break;
+        case 'youhavewon':
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+
+          document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
+          document.getElementById('youhavewon').setAttribute('style', 'display:block;');
+          document.getElementById('yesnopanel').setAttribute('style', 'display:none;');
+          break;
+        case 'player-guess-correct':
+          let playerList = document.getElementById('player-list');
+          printPlayerList(playerList);
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('winnerpanel').setAttribute('style', 'display:block;');
+          break;
+        case 'gameover':
+          //Hide everything
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predefined-question-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
+          document.getElementById('player-list').setAttribute('style', 'display:none;');
+          document.getElementById('scoreboard').setAttribute('style', 'display:block;');
+          //Populate the scoreboard
+          let scoreList = document.getElementById('player-scores');
+          scoreList.innerHTML += `
+            <div class="row">
+              <div class="col-4">Rank</div>
+              <div class="col-4">Name</div>
+              <div class="col-4">Famous Person</div>
+            </div>`
+          for(let i=0;i<winners.length;i++) {
+              scoreList.innerHTML += `
+                <div class="row">
+                  <div class="col-4 label-text">${i+1}</div>
+                  <div class="col-4 label-text">${winners[i].name}</div>
+                  <div class="col-4 label-text">${winners[i].celeb}</div>
+                </div>
+              `
+          }
+          break;
+        case 'all-disconnected':
+          document.getElementById('room-action-area').setAttribute('style', 'display:none;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('predifined-question-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('winnerpanel').setAttribute('style', 'display:none;');
+          document.getElementById('player-list').setAttribute('style', 'display:none;');
+          document.getElementById('disconnectpanel').setAttribute('style', 'display:block;');
+      }
+  }
+
+  //Reset all the room variables
+  function resetAll() {
+    currentRoom = '';
+    questionCount = 0;
+    myQuestions = [];
+    winners = [];
+    won = false;
+    //responsesReceived = [];
+    //currentRoomMembers = [];
+  }
+
+  //// TODO: Function below
+  function endTurn(id) {
+    document.getElementById('end-turn').setAttribute('style','display:none;');
+    chatSocket.send(JSON.stringify({
+        'end_turn': ''
+    }));
+  }
+
+  function sendYesNo(id) {
+    chatSocket.send(JSON.stringify({
+        'reply_yesno': id
+    }));
+  }
+
+  //Initiate the game
+  function startGame() {
+    chatSocket.send(JSON.stringify({
+        'start_game': ''
+    }));
+  }
+
+  function sendQuestion() {
+    const question = document.getElementById('question-input').value;
+    chatSocket.send(JSON.stringify({
+        'send_question': question
+    }));
+  }
 
   function createRoom() {
     const roomName = document.getElementById('roomname').value;
@@ -65,7 +313,10 @@
     }));
   }
 
-  function joinRoom(room) {
+
+
+  function joinRoom(e,room) {
+    console.log(e);
     chatSocket.send(JSON.stringify({
         'joinroom': room
     }));
@@ -73,39 +324,66 @@
 
   function printRoomList(rooms, roomList) {
     roomList.innerHTML = '';
-    let roomUL = document.createElement("UL");
+    roomList.innerHTML += `
+            <div class="row">
+              <div class="col-3">Room Name</div>
+              <div class="col-3">Players</div>
+              <div class="col-3">Status</div>
+              <div class="col-3">Click to join</div>
+            </div>`
+    let roomUL = document.createElement('DIV');
+    //roomUL.setAttribute('class','row');
     for (let room of rooms) {
-      console.log('here is the room',room);
+      //<div class="col-3"><a href="#" class="join-btn" onclick="joinRoom('${room.name}')">Join</a></div>
       let roomHTML = `
-        <li>
-          <p class="title">
-            ${room}
-            <button onclick="joinRoom('${room}')">Join</button>
-          </p>
-        </li>
+        <div class="row">
+          <div class="col-3"><p class="title label-text">${room.name}</p></div>
+          <div class="col-3"><p class="title label-text">${room.playercount}</p></div>
+          <div class="col-3"><p class="title label-text">${room.locked ? 'Game in Progress' : 'Open'}</p></div>
+          ${room.locked
+            ? `<div class="col-3"></div>`
+            : `<div class="col-3"><a href="#" class="join-btn" onclick="joinRoom(this,'${room.name}')">Join</a></div>`
+          }
+        </div>
       `
       roomUL.innerHTML += roomHTML;
     }
     roomList.appendChild(roomUL);
+    //Add the listener - DOESN'T WORK
+    // document.querySelector('.join-btn').addEventListener("click", function(event) {
+    //   event.preventDefault();
+    //   console.log(event);
+    // }, false);
   }
 
 
-  function printPlayerList(players, playerList) {
+  function printPlayerList(playerList) {
     playerList.innerHTML = '';
-    let playerUL = document.createElement("UL");
+
     for (let player of players) {
       console.log('here is the player',player);
+      let playerUL = document.createElement("DIV");
+      playerUL.setAttribute('class','row');
+      playerUL.setAttribute('id',player.id);
+      let winMarker;
+      player.win ?  winMarker = `<span class="win-text">WIN</span>`: winMarker = '';
       let playerHTML = `
-        <li>
-          <p class="title">
-            ${player}
-            <button onclick="joinRoom('${player}')">Join</button>
-          </p>
-        </li>
+          <span class="col-5">
+            <span class="label-text">Name: </span>
+            ${player.name}
+          </span>
+          <span class="col-5 celeb">
+            <span class="label-text">Famous person name: </span>
+            ${player.celeb}
+          </span>
+          <span class="col-2">
+            ${winMarker}
+          </span>
       `
       playerUL.innerHTML += playerHTML;
+      playerList.appendChild(playerUL);
     }
-    playerList.appendChild(playerUL);
+
   }
 
   chatSocket.onmessage = (e) => {
@@ -115,6 +393,8 @@
 
       console.log('here is the data',data.action);
       switch (data.action) {
+        case 'send_id':
+          playerId = data.payload.player_id;
         case 'name_set':
           console.log('set name');
           if (data.payload.success) {
@@ -122,6 +402,7 @@
             let setRoom = document.getElementById('set-room');
             setName.setAttribute('style', 'display:none;');
             setRoom.setAttribute('style', 'display:block;');
+            document.getElementById('room-panel').setAttribute('style', 'display:block;');
             roomList.setAttribute('style', 'display:block;');
             document.getElementById('welcome').innerHTML = `Welcome ${data.payload.name}`;
           }
@@ -135,11 +416,12 @@
         case 'room_join':
           console.log('join here',data.payload);
           if(data.payload.success) {
-            document.getElementById('room-name').innerHTML = data.payload.room;
+            document.getElementById('room-name').innerHTML =`You are in room ${data.payload.room}`;
             document.getElementById('room-setup').setAttribute('style', 'display:none;');
+            document.getElementById('room-panel').setAttribute('style', 'display:none;');
             document.getElementById('room-list').setAttribute('style', 'display:none;');
             document.getElementById('room').setAttribute('style', 'display:block;');
-            console.log(data.payload.players);
+            //console.log(data.payload.players);
             currentRoom = data.payload.room;
             //window.location.pathname = `/risla/${data.payload.room}/`;
           }
@@ -151,14 +433,109 @@
             document.getElementById('room-setup').setAttribute('style', 'display:block;');
             document.getElementById('room-list').setAttribute('style', 'display:block;');
             document.getElementById('room').setAttribute('style', 'display:none;');
+            document.getElementById('disconnectpanel').setAttribute('style', 'display:none;');
+            document.getElementById('scoreboard').setAttribute('style', 'display:none;');
+            document.getElementById('room-panel').setAttribute('style', 'display:block;');
+            resetAll();
             //window.location.pathname = `/risla/${data.payload.room}/`;
           }
           break;
         case 'room_list_players': {
           console.log('room_list_players', data.payload);
           let playerList = document.getElementById('player-list');
-          let players = data.payload.players
-          printPlayerList(players,playerList);
+          players = data.payload.players
+          if(players.length > 0) {
+            playerList.setAttribute('style','display:block;');
+          }
+          printPlayerList(playerList);
+          //// TODO: Need some sort of marker in the payload to stop condition below if in existing game
+          console.log('owner and me', data.payload.owner,playerId,data.payload.players.length)
+          if (playerId === data.payload.owner && data.payload.players.length > 0) {
+            document.getElementById('start-text').innerHTML = 'Click below to start a new game';
+            document.getElementById('start-btn').setAttribute('style', 'display:inline-block;');
+            document.getElementById('start').setAttribute('style', 'display:block;');
+          } else if (playerId === data.payload.owner && data.payload.players.length === 0) {
+            document.getElementById('start-text').innerHTML = 'Waiting for other players to join';
+            document.getElementById('start-btn').setAttribute('style', 'display:none;');
+          } else {
+            document.getElementById('start').setAttribute('style', 'display:none;');
+          }
+          break;
+        }
+        case 'init_game': {
+          document.getElementById('start').setAttribute('style', 'display:none;');
+          console.log('init_game',data.payload);
+          if (data.payload.owner_id === data.payload.player_id) {
+            roomActionArea('turn-taker',null);
+
+          } else {
+            roomActionArea('turn-receiver',null);
+          }
+          break;
+        }
+        case 'receive_question': {
+          console.log(data.payload)
+          if (data.payload.sender.id === playerId) {
+            myQuestions.push(data.payload.question);
+            roomActionArea('question-sent',data.payload);
+          } else {
+            roomActionArea('question-received',data.payload);
+            //roomActionArea('turn-receiver',null);
+          }
+          break;
+        }
+        case 'receive_yesno': {
+          console.log('yesno',data.payload)
+          roomActionArea('reply-received',data.payload);
+          break;
+        }
+        case 'game_over': {
+          console.log('game over',data.payload, players);
+          winners = data.payload.winners;
+          winners.push(data.payload.looser);
+          console.log('WINNERS HERE', winners, data.payload)
+          roomActionArea('gameover');
+          break;
+        }
+        case 'guess_correct': {
+          console.log(data.payload.winner);
+          winners.push(data.payload.winner);
+          winnersPanel = document.getElementById('winnerpanel');
+          winnersPanel.innerHTML = '';
+          winnerDiv = document.createElement('div');
+          for(let i=0;i<winners.length;i++) {
+            winnerDiv.innerHTML = `
+              <span>${winners[i].name} -- ${winners[i].celeb}</span>
+            `;
+          }
+          winnersPanel.append(winnerDiv);
+
+          if (data.payload.winner.id === playerId) {
+            roomActionArea('youhavewon');
+          } else {
+            //// TODO:  modify the player list to reflect winner
+            //Update win to the players table
+            winnerFromPlayers = players.find(i => i.id === data.payload.winner.id);
+            winnerFromPlayers.win = true;
+            console.log('players',winnerFromPlayers,data.payload.winner.id,players)
+            roomActionArea('player-guess-correct');
+            //roomActionArea('turn-receiver',null);
+          }
+
+          console.log('nextplayer',data.payload.next_player);
+          if (data.payload.next_player === playerId) {
+            document.getElementById('wait-message').setAttribute('style','display:none');
+            roomActionArea('turn-taker');
+          } else {
+            document.getElementById('wait-message').setAttribute('style','display:none');
+            roomActionArea('turn-receiver');
+          }
+          break;
+        }
+        case 'all_disconnect': {
+          //Everyone has disconnected
+          roomActionArea('all-disconnected', null);
+          break;
         }
         default:
           console.log('hit default');

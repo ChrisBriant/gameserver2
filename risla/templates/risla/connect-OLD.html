@@ -1,0 +1,310 @@
+{% extends "main.html" %}
+{% block content %}
+
+<p>Game Server</p>
+
+<h2 id="welcome"></h2>
+
+<div id='set-name'>
+  <input id="nickname" type="text" />
+  <button id="addname" onclick="addName()">Send Name</button>
+</div>
+
+<div id="room-setup">
+  <div id='set-room' style='display:none;'>
+    <input id="roomname" type="text" />
+    <button id="createroom" onclick="createRoom()">Create Room</button>
+  </div>
+</div>
+
+<div id='room-list' style='display:none;'></div>
+
+<div id="room" style="display:none;">
+  <h2 id="room-name""></h2>
+
+  <div id="player-list" class="panel"></div>
+
+  <div id="room-action-area" style="display:none;">
+    <h3>My Questions</h3>
+    <div id="question-history"></div>
+    <div id="sender-action-panel" style="display:none;">
+      <div id='end-turn' style='display:none;'>
+        <span>All responses received
+          <button type="button" onclick="endTurn()">End Turn</button>
+        </span>
+      </div>
+      <p>Select from one of the suggested questions below or type a question.
+        Questions must be questions that can be answered with either yes or no.</p>
+      <textarea id="question-input" rows="4" cols="80"></textarea>
+      <button id='send-question' type='button' onclick="sendQuestion()">Send</button>
+    </div>
+    <div id="receiver-action-panel" style="display:none;">
+      <div id="question"></div>
+      <button id='yes' type='button' onclick="sendYesNo(this.id)">Yes</button>
+      <button id='no' type='button' onclick="sendYesNo(this.id)">No</button>
+    </div>
+  </div>
+
+
+  <button id="start" onclick="startGame()" style='display:none;'>Start</button>
+  <button id="leaveeroom" onclick="leaveRoom()">Leave</button>
+</div>
+
+
+
+
+<script type="text/javascript">
+  console.log('here');
+
+  // const chatSocket = new WebSocket(
+  //     `ws://${window.location.host}/ws/risla/`
+  // );
+
+  let currentRoom = '';
+  let playerId;
+  let questionCount = 0;
+
+  const chatSocket = new WebSocket(
+      `ws://${window.location.host}/ws/risla/`
+  );
+
+
+
+  //Handles the displaying / hiding of the room action area
+  function roomActionArea(event,data) {
+      switch (event) {
+        case 'turn-taker':
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:block;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('end-turn').setAttribute('style', 'display:none;');
+          break;
+        case 'turn-receiver':
+          document.getElementById('room-action-area').setAttribute('style', 'display:block;');
+          document.getElementById('sender-action-panel').setAttribute('style', 'display:none;');
+          document.getElementById('receiver-action-panel').setAttribute('style', 'display:block;');
+          break;
+        case 'question-sent':
+          console.log('sent a question');
+          let questionContainer = document.createElement('DIV');
+          questionContainer.setAttribute('id',`question-${questionCount}`);
+          questionCount++;
+          let question = document.createElement('P');
+          let list = document.createElement('UL');
+          question.innerHTML = data.question;
+          questionContainer.append(question);
+          questionContainer.append(list);
+          document.getElementById('question-history').append(questionContainer);
+          break;
+        case 'question-received':
+          let playerName = document.createElement('p');
+          playerName.innerHTML = `<strong>${data.sender.celeb} asks:</strong> ${data.question}`;
+          document.getElementById('question').append(playerName);
+          console.log('received a question');
+          break;
+        case 'reply-received':
+          let qList = document.getElementById(`question-${questionCount-1}`).getElementsByTagName('ul')[0];
+          let listItem = document.createElement('LI');
+          listItem.innerHTML = `<strong>${data.sender} says:</strong> ${data.response}`;
+          qList.append(listItem);
+          if(data.last_response) {
+            document.getElementById('end-turn').setAttribute('style', 'display:block;');
+          }
+      }
+  }
+
+
+  //// TODO: Function below
+  function endTurn(id) {
+    chatSocket.send(JSON.stringify({
+        'end_turn': ''
+    }));
+  }
+
+  function sendYesNo(id) {
+    chatSocket.send(JSON.stringify({
+        'reply_yesno': id
+    }));
+  }
+
+  //Initiate the game
+  function startGame() {
+    chatSocket.send(JSON.stringify({
+        'start_game': ''
+    }));
+  }
+
+  function sendQuestion() {
+    const question = document.getElementById('question-input').value;
+    chatSocket.send(JSON.stringify({
+        'send_question': question
+    }));
+  }
+
+  function createRoom() {
+    const roomName = document.getElementById('roomname').value;
+    console.log(roomName);
+    chatSocket.send(JSON.stringify({
+        'newroom': roomName
+    }));
+  }
+
+  function leaveRoom() {
+    console.log('leaving ',currentRoom);
+    chatSocket.send(JSON.stringify({
+        'leaveroom': currentRoom
+    }));
+  }
+
+  function addName() {
+    const name = document.getElementById('nickname').value;
+    console.log(name);
+    chatSocket.send(JSON.stringify({
+        'setname': name
+    }));
+  }
+
+  function joinRoom(room) {
+    chatSocket.send(JSON.stringify({
+        'joinroom': room
+    }));
+  }
+
+  function printRoomList(rooms, roomList) {
+    roomList.innerHTML = '';
+    let roomUL = document.createElement("UL");
+    for (let room of rooms) {
+      console.log('here is the room',room);
+      let roomHTML = `
+        <li>
+          <p class="title">
+            ${room}
+            <button onclick="joinRoom('${room}')">Join</button>
+          </p>
+        </li>
+      `
+      roomUL.innerHTML += roomHTML;
+    }
+    roomList.appendChild(roomUL);
+  }
+
+
+  function printPlayerList(players, playerList) {
+    playerList.innerHTML = '';
+    let playerUL = document.createElement("UL");
+    for (let player of players) {
+      console.log('here is the player',player);
+      let playerHTML = `
+        <li>
+          <p class="title">
+            ${player.name} -- ${player.celeb}
+          </p>
+        </li>
+      `
+      playerUL.innerHTML += playerHTML;
+    }
+    playerList.appendChild(playerUL);
+  }
+
+  chatSocket.onmessage = (e) => {
+      let roomList = document.getElementById('room-list');
+      const data = JSON.parse(e.data);
+      console.log('received');
+
+      console.log('here is the data',data.action);
+      switch (data.action) {
+        case 'send_id':
+          playerId = data.payload.player_id;
+        case 'name_set':
+          console.log('set name');
+          if (data.payload.success) {
+            let setName = document.getElementById('set-name');
+            let setRoom = document.getElementById('set-room');
+            setName.setAttribute('style', 'display:none;');
+            setRoom.setAttribute('style', 'display:block;');
+            roomList.setAttribute('style', 'display:block;');
+            document.getElementById('welcome').innerHTML = `Welcome ${data.payload.name}`;
+          }
+          break;
+        case 'room_list':
+          console.log('room list', data.payload);
+          if (data.payload.success) {
+            printRoomList(data.payload.rooms, roomList);
+          }
+          break;
+        case 'room_join':
+          console.log('join here',data.payload);
+          if(data.payload.success) {
+            document.getElementById('room-name').innerHTML = data.payload.room;
+            document.getElementById('room-setup').setAttribute('style', 'display:none;');
+            document.getElementById('room-list').setAttribute('style', 'display:none;');
+            document.getElementById('room').setAttribute('style', 'display:block;');
+            //console.log(data.payload.players);
+            currentRoom = data.payload.room;
+            //window.location.pathname = `/risla/${data.payload.room}/`;
+          }
+          break;
+        case 'room_leave':
+          console.log('leave room',data.payload);
+          if(data.payload.success) {
+            currentRoom = '';
+            document.getElementById('room-setup').setAttribute('style', 'display:block;');
+            document.getElementById('room-list').setAttribute('style', 'display:block;');
+            document.getElementById('room').setAttribute('style', 'display:none;');
+            //window.location.pathname = `/risla/${data.payload.room}/`;
+          }
+          break;
+        case 'room_list_players': {
+          console.log('room_list_players', data.payload);
+          let playerList = document.getElementById('player-list');
+          let players = data.payload.players
+          printPlayerList(players,playerList);
+          console.log('owner and me', data.payload.owner,playerId)
+          if (playerId === data.payload.owner) {
+            document.getElementById('start').setAttribute('style', 'display:block;');
+          } else {
+            document.getElementById('start').setAttribute('style', 'display:none;');
+          }
+          break;
+        }
+        case 'init_game': {
+          console.log('init_game',data.payload);
+          if (data.payload.owner_id === data.payload.player_id) {
+            roomActionArea('turn-taker',null);
+            document.getElementById('start').setAttribute('style', 'display:none;');
+          } else {
+            roomActionArea('turn-receiver',null);
+          }
+          break;
+        }
+        case 'receive_question': {
+          console.log(data.payload)
+          if (data.payload.sender.id === playerId) {
+            roomActionArea('question-sent',data.payload);
+          } else {
+            roomActionArea('question-received',data.payload);
+            //roomActionArea('turn-receiver',null);
+          }
+          break;
+        }
+        case 'receive_yesno': {
+          console.log('yesno',data.payload)
+          roomActionArea('reply-received',data.payload);
+          break;
+        }
+        default:
+          console.log('hit default');
+      }
+  };
+
+  // chatSocket.generate = (e) => {
+  //     const data = JSON.parse(e.data);
+  //     //console.log(e);
+  //     console.log(data);
+  // };
+
+
+
+</script>
+
+{% endblock %}

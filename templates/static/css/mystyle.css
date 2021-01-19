@@ -2,6 +2,9 @@
 /*BASIC SETUP*/
 /*----------------------------------------------*/
 
+/* COLOR SCHEME */
+/* https://colorhunt.co/palette/253352 */
+
 * {
   margin: 0;
   padding: 0;
@@ -12,17 +15,23 @@
 html,
 body {
   margin: 0;
-  background-color: #fff;
-  color:#262626;
+  background-color: #e8eae6;
+  color:#212121;
   font-family: 'Roboto Condensed', sans-serif;
   font-size: 22px;
   font-weight: 400;
+  text-align: center;
   text-rendering: optimizeLegibility;
 }
 
 header {
-  min-height: 100vh;
-  padding: 2%;
+  min-height: 2vh;
+  padding: 2px;
+  background-color: #7c9473;
+}
+
+header > p, header > h4 {
+  color: #e8eae6;
 }
 
 section {
@@ -38,161 +47,70 @@ footer {
   padding-top: 20px;
 }
 
-/*
-a {
+button {
+  border-radius: 15px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
+  border : 0;
+  background-color: #475442;
+  /* background-color: #7c9473; */
+  /* color: #212121; */
+  color: #fff;
+  margin : 4px;
+}
+
+button:hover {
+  /* border: 2px solid black; */
+  background-color: #7c9473;
+}
+
+input {
+  border: 1px solid black;
+}
+
+.panel {
+  margin-left : 1rem;
+  margin-right :1rem;
+  margin-bottom: 5px;
+  padding: 5px;
+  border-radius: 15px;
+  background-color: #cfdac8;
+  text-align: left;
+}
+
+.panel-inner-center {
+  text-align: center;
+  width: 100%;
+}
+
+#start-btn {
+  width : 10rem;
+  height: 3rem;
+  border: 2px solid black;
+  background-color: #379cb3;
+}
+
+#start-btn:hover {
+  background-color: #47c2de;
+}
+
+
+.label-text {
+  color: #7c9473;
+}
+
+.sub-area {
+  margin-bottom: 1rem;
+}
+
+h1, h2, h3, h4 {
+  text-align:center;
+}
+
+li {
+  color: #7c9473;
   cursor: pointer;
-}*/
-
-
-.clearfix {zoom:1}
-.clearfix::after {
-  content: '.';
-  clear: both;
-  display: block;
-  height: 0;
-  visibility: hidden;
+  list-style-type:none;
 }
-
-.navbar {
-  background-color: #210e06;
-}
-
-.floating-dialog {
-  margin-top: 20%;
-}
-
-.edit-item {
-  cursor:pointer;
-}
-
-.submit-item {
-  cursor:pointer;
-  display:none;
-}
-
-.cancel-item {
-  cursor:pointer;
-  display:none;
-}
-
-
-/***********HEADERS****************/
-
-h1, h2, h3 {
-  font-weight: 400;
-  text-transform: uppercase;
-  text-align: center;
-}
-
-/***********FORMS****************/
-.expression-box {
-  margin-bottom: 10px;
-  width: 100%;
-}
-
-.home-form {
-  height:10%;
-  width: 100%;
-}
-
-.message-text {
-    color: #696915;
-}
-
-/***********CONTAINERS****************/
-
-.center-contents {
-  text-align: center;
-}
-
-.center-contents > a {
-  color: #40739e;
-}
-
-.header-container {
-  background-color: #D5B895;
-  padding: 2%;
-  color: #474747;
-  border-radius: 15px;
-}
-
-.expression-item {
-  background-color: #e8e0cf;
-  margin:20px;
-  padding:10px;
-  border-radius: 15px;
-}
-
-.space-at-top {
-  height: 50px;
-}
-
-/***********PAGINATION****************/
-.pagination {
-  text-align: center;
-}
-
-
-.step-links > a {
-  padding:20px;
-  color: #40739e;
-}
-
-
-/***********SEARCH****************/
-
-#search-form > div > * {
-  margin-right: 10px;
-  margin-left: 10px;
-}
-
-/************HEADER*************/
-#excel-icon {
-  width:5%;
-}
-
-#excel-icon-big {
-  width:25%;
-}
-
-/***********MAPS********************/
-/*
-
-.map {
-  width: 100%;
-  height: 70vh;
-}
-
-.ol-popup {
-  background-color: rgba(255, 234, 167,.8);
-  padding: 10px;
-  border-radius: 15px;
-}
-
-#popup-content img {
-  max-width: 100px;
-}
-*/
-/**********ROUTES*******************/
-
-/*
-.route-table {
-  background-color: #f5ba90;
-  padding: 20px;
-  border-radius: 15px;
-}
-
-.t-head {
-  font-weight: bold;
-}
-*/
-
-/********FOOTER*******************/
-/*
-.main-footer {
-  background-image: url('../img/rollinghills-800px.png');
-  height: 132px;
-  padding: 0px;
-  margin: 0px;
-}
-*/
