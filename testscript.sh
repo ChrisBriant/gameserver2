@@ -9,4 +9,5 @@ python3 manage.py test risla.tests.ChatTests.all_disconnect
 python3 manage.py test risla.tests.ChatTests.test_leave
 python3 manage.py test risla.tests.ChatTests.all_leave
 python3 manage.py test risla.tests.ChatTests.test_questions
-
+python3 manage.py test risla.tests.ChatTests.test_play_game_start_new
+python3 manage.py test risla.tests.ChatTests.test_room_destroys

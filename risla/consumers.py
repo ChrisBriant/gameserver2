@@ -65,7 +65,7 @@ class PlayerConsumer(AsyncWebsocketConsumer):
             room.game['players_left'] = room.get_players(player)
             room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
             room.game.pop(disconnect_id, None)
-            if players_left == 1:
+            if players_left <= 1:
                 await self.channel_layer.group_send(
                     room.name,
                     {
@@ -97,7 +97,10 @@ class PlayerConsumer(AsyncWebsocketConsumer):
                 print("NOT REMOVING")
                 await self.send_room(room,'list_players')
         else:
-            if players_left == 1:
+            print("PLAYERS_LEFT", players_left)
+            if players_left <= 1:
+                print("NO GAME IN PROGRESS", room.name)
+                [print(room.name) for room in rooms.rooms]
                 rooms.remove_room(room.name)
                 await self.channel_layer.group_send(
                     'all_users',
@@ -122,55 +125,61 @@ class PlayerConsumer(AsyncWebsocketConsumer):
         if room:
             #Sending messages on disconnect doesn't seem to work
             #Remove all references to disconnected player from room
-            players_left = room.leave_room(player)
-            if room.game:
-                room.game['players_left'] = room.get_players(player)
-                room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
-                room.game.pop(disconnect_id, None)
-                if players_left == 1:
-                    await self.channel_layer.group_send(
-                        room.name,
-                        {
-                            'type': 'all_disconnect'
-                        }
-                    )
-                    rooms.remove_room(room.name)
-                    await self.channel_layer.group_send(
-                        'all_users',
-                        {
-                            'type': 'room_list',
-                        }
-                    )
-                    await self.channel_layer.group_discard(
-                        room.name,
-                        self.channel_name
-                    )
-                else:
-                    if room.game['current_player'] == disconnect_id:
-                        room.game['current_player'] = room.game['turns'][0]['id']
-                    await self.channel_layer.group_send(
-                        room.name,
-                        {
-                            'type': 'init_game',
-                            'owner': room.game['current_player']
-                        }
-                    )
-                    print('THE GAME IS', room.game, room.owner.id)
-                    print("NOT REMOVING")
-                    await self.send_room(room,'list_players')
-            else:
-                if players_left == 1:
-                    rooms.remove_room(room.name)
-                    await self.channel_layer.group_send(
-                        'all_users',
-                        {
-                            'type': 'room_list',
-                        }
-                    )
-                    await self.channel_layer.group_discard(
-                        room.name,
-                        self.channel_name
-                    )
+            print("DESTROYING ROOM")
+            await self.leave_room_procedure(room,player)
+
+
+            #Adding the room destroy procedure here instead, revert back to code below if problems
+
+            # players_left = room.leave_room(player)
+            # if room.game:
+            #     room.game['players_left'] = room.get_players(player)
+            #     room.game['turns'] = [ p for p in room.game['turns'] if p['id'] != disconnect_id ]
+            #     room.game.pop(disconnect_id, None)
+            #     if players_left == 1:
+            #         await self.channel_layer.group_send(
+            #             room.name,
+            #             {
+            #                 'type': 'all_disconnect'
+            #             }
+            #         )
+            #         rooms.remove_room(room.name)
+            #         await self.channel_layer.group_send(
+            #             'all_users',
+            #             {
+            #                 'type': 'room_list',
+            #             }
+            #         )
+            #         await self.channel_layer.group_discard(
+            #             room.name,
+            #             self.channel_name
+            #         )
+            #     else:
+            #         if room.game['current_player'] == disconnect_id:
+            #             room.game['current_player'] = room.game['turns'][0]['id']
+            #         await self.channel_layer.group_send(
+            #             room.name,
+            #             {
+            #                 'type': 'init_game',
+            #                 'owner': room.game['current_player']
+            #             }
+            #         )
+            #         print('THE GAME IS', room.game, room.owner.id)
+            #         print("NOT REMOVING")
+            #         await self.send_room(room,'list_players')
+            # else:
+            #     if players_left == 1:
+            #         rooms.remove_room(room.name)
+            #         await self.channel_layer.group_send(
+            #             'all_users',
+            #             {
+            #                 'type': 'room_list',
+            #             }
+            #         )
+            #         await self.channel_layer.group_discard(
+            #             room.name,
+            #             self.channel_name
+            #         )
 
 
     # Receive message from WebSocket

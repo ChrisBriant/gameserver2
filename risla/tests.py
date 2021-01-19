@@ -430,3 +430,17 @@ class ChatTests(ChannelsLiveServerTestCase):
         self.driver.find_element_by_id('send-question').click()
         self.driver.switch_to_window(self.driver.window_handles[2])
         self.driver.find_element_by_id('no').click()
+
+    def test_room_destroys(self):
+        #Test that the room gets destroyed even if there is no game in progress
+        for i in range(0,3):
+            self.driver.execute_script('window.open("");')
+            self.driver.switch_to_window(self.driver.window_handles[-1])
+            self.driver.get('http://localhost:8000/risla')
+            self.driver.find_element_by_id("nickname").send_keys(chr(i+65))
+            self.driver.find_element_by_id("addname").click()
+        self.driver.switch_to_window(self.driver.window_handles[1])
+        letters = string.ascii_letters
+        roomname = ''.join(random.choice(letters) for i in range(6))
+        self.driver.find_element_by_id("roomname").send_keys(roomname)
+        self.driver.find_element_by_id("createroom").click()
